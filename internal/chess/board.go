@@ -2,20 +2,27 @@ package chess
 
 import (
 	"errors"
-	"idylicaro/go-chess/internal/uci"
 )
+
+type Position struct {
+	X int
+	Y int
+}
 
 type IBoard interface {
 	GetPiece(x, y int) (Piece, error)
-	MovePiece(move uci.Move) error
-	ValidateMove(piece Piece, toX, toY int) error //?? This best way, and name...
+	MovePiece(fromX, fromY, toX, toY int) error
+
+	GetValidMoves(fromX, fromY int) ([]Position, error)
+	NewInitialBoard() IBoard
+
+	//verificar o estado do tabuleiro de forma geral
+	FindKingPosition(color Color) (int, int, error)
+	IsSquareAttacked(x, y int, byColor Color) (bool, error)
 
 	Copy() IBoard
 	AddPiece(piece Piece, x, y int) error
 	RemovePiece(x, y int) error
-	//verificar o estado do tabuleiro de forma geral
-	FindKingPosition(color Color) (int, int, error)
-	IsSquareAttacked(x, y int, byColor Color) (bool, error)
 }
 
 type Board struct {
