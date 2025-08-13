@@ -1,6 +1,9 @@
 package uci
 
-import "testing"
+import (
+	common "idylicaro/go-chess/internal/common"
+	"testing"
+)
 
 func TestParseCoordinate(t *testing.T) {
 	var tests = []struct {
@@ -57,8 +60,8 @@ func TestParseMove(t *testing.T) {
 		{"b1c3", Move{FromX: 1, FromY: 7, ToX: 2, ToY: 5}, false},
 
 		// Pawn promotion scenarios (5 characters)
-		{"a7a8q", Move{FromX: 0, FromY: 1, ToX: 0, ToY: 0, Promotion: Queen}, false},
-		{"h2h1r", Move{FromX: 7, FromY: 6, ToX: 7, ToY: 7, Promotion: Rook}, false},
+		{"a7a8q", Move{FromX: 0, FromY: 1, ToX: 0, ToY: 0, Promotion: common.Queen}, false},
+		{"h2h1r", Move{FromX: 7, FromY: 6, ToX: 7, ToY: 7, Promotion: common.Rook}, false},
 
 		// Error scenarios
 		{"e2", Move{}, true},    // Incorrect length

@@ -1,22 +1,14 @@
 package uci
 
-import "fmt"
-
-type PieceType int
-
-const (
-	Pawn PieceType = iota
-	Knight
-	Bishop
-	Rook
-	Queen
-	King
+import (
+	"fmt"
+	common "idylicaro/go-chess/internal/common"
 )
 
 type Move struct {
 	FromX, FromY int
 	ToX, ToY     int
-	Promotion    PieceType
+	Promotion    common.PieceType
 }
 
 var col = map[rune]int{
@@ -56,13 +48,13 @@ func ParseMove(uciMove string) (Move, error) {
 		promoChar := uciMove[4]
 		switch promoChar {
 		case 'q':
-			move.Promotion = Queen
+			move.Promotion = common.Queen
 		case 'r':
-			move.Promotion = Rook
+			move.Promotion = common.Rook
 		case 'b':
-			move.Promotion = Bishop
+			move.Promotion = common.Bishop
 		case 'n':
-			move.Promotion = Knight
+			move.Promotion = common.Knight
 		default:
 			return Move{}, fmt.Errorf("promotion char invalid: %c", promoChar)
 		}
