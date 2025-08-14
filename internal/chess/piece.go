@@ -130,21 +130,43 @@ func NewBishop(color Color) *Bishop {
 
 func (bi *Bishop) GetValidMoves(fromX, fromY int, board *Board) []Position {
 	validMoves := []Position{}
-	for i := 0; i <= 7; i++ {
-		// para i de 1 até 7:
-		// newX = fromX + i
-		// newY = fromY - i
+	// Bishop moves in 4 diagonal directions
+	directions := [][]int{
+		{1, -1},  // right up
+		{-1, -1}, // left up
+		{1, 1},   // right down
+		{-1, 1},  // left down
+	}
 
-		// se a nova posição for inválida (fora do tabuleiro), pare o loop
-		// se a nova posição tiver uma peça da minha cor, pare o loop
-		// se a nova posição tiver uma peça inimiga, adicione a posição e pare o loop
-		// se a nova posição estiver vazia, adicione a posição e continue o loop
+	for _, dir := range directions {
+		dx, dy := dir[0], dir[1]
+		for i := 1; i <= 7; i++ {
+			newX := fromX + dx*i
+			newY := fromY + dy*i
+
+			if err := board.IsValidCoordinates(newX, newY); err != nil {
+				break
+			}
+
+			piece, err := board.GetPiece(newX, newY)
+			if err != nil {
+				break
+			}
+
+			if piece == nil {
+				validMoves = append(validMoves, Position{X: newX, Y: newY})
+			} else {
+				if bi.Color != piece.GetColor() {
+					validMoves = append(validMoves, Position{X: newX, Y: newY})
+				}
+				break
+			}
+		}
 	}
 
 	return validMoves
 }
 
-//TODO: Bishop
 //TODO: Rook
 //TODO: Queen
 //TODO: King
