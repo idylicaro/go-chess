@@ -26,13 +26,13 @@ type IBoard interface {
 }
 
 type Board struct {
-	board [8][8]*Piece
+	board [8][8]IPiece
 }
 
-func NewBoard(board *[8][8]*Piece) *Board {
+func NewBoard(board *[8][8]IPiece) *Board {
 	if board == nil {
 		return &Board{
-			board: [8][8]*Piece{},
+			board: [8][8]IPiece{},
 		}
 	}
 	return &Board{
@@ -40,16 +40,16 @@ func NewBoard(board *[8][8]*Piece) *Board {
 	}
 }
 
-func (b *Board) GetPiece(x, y int) (*Piece, error) {
-	err := b.isValidCoordinates(x, y)
+func (b *Board) GetPiece(x, y int) (IPiece, error) {
+	err := b.IsValidCoordinates(x, y)
 	if err != nil {
 		return nil, err
 	}
 	return b.board[x][y], nil
 }
 
-func (b *Board) AddPiece(piece *Piece, x, y int) error {
-	err := b.isValidCoordinates(x, y)
+func (b *Board) AddPiece(piece IPiece, x, y int) error {
+	err := b.IsValidCoordinates(x, y)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (b *Board) AddPiece(piece *Piece, x, y int) error {
 	return nil
 }
 
-func (b *Board) isValidCoordinates(x, y int) error {
+func (b *Board) IsValidCoordinates(x, y int) error {
 	if x < 0 || x > 7 || y < 0 || y > 7 {
 		return errors.New("invalid coordinates")
 	}
