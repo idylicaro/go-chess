@@ -115,6 +115,35 @@ func (k *Knight) GetValidMoves(fromX, fromY int, board *Board) []Position {
 	return validMoves
 }
 
+type Bishop struct {
+	Piece
+}
+
+func NewBishop(color Color) *Bishop {
+	return &Bishop{
+		Piece: Piece{
+			Type:  common.Bishop,
+			Color: color,
+		},
+	}
+}
+
+func (bi *Bishop) GetValidMoves(fromX, fromY int, board *Board) []Position {
+	validMoves := []Position{}
+	for i := 0; i <= 7; i++ {
+		// para i de 1 até 7:
+		// newX = fromX + i
+		// newY = fromY - i
+
+		// se a nova posição for inválida (fora do tabuleiro), pare o loop
+		// se a nova posição tiver uma peça da minha cor, pare o loop
+		// se a nova posição tiver uma peça inimiga, adicione a posição e pare o loop
+		// se a nova posição estiver vazia, adicione a posição e continue o loop
+	}
+
+	return validMoves
+}
+
 //TODO: Bishop
 //TODO: Rook
 //TODO: Queen
