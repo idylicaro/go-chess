@@ -42,8 +42,8 @@ func (g *Game) Move(move uci.Move) error {
 		return err
 	}
 
-	if pieceToMove.Color != g.currentTurn {
-		return fmt.Errorf("not %v's turn", pieceToMove.Color)
+	if pieceToMove.GetColor() != g.currentTurn {
+		return fmt.Errorf("not %v's turn", pieceToMove.GetColor())
 	}
 
 	// 1. Validate the move

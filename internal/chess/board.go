@@ -10,7 +10,7 @@ type Position struct {
 }
 
 type IBoard interface {
-	GetPiece(x, y int) (Piece, error)
+	GetPiece(x, y int) (IPiece, error)
 	MovePiece(fromX, fromY, toX, toY int) error
 
 	GetValidMoves(fromX, fromY int) ([]Position, error)
@@ -21,12 +21,47 @@ type IBoard interface {
 	IsSquareAttacked(x, y int, byColor Color) (bool, error)
 
 	Copy() IBoard
-	AddPiece(piece Piece, x, y int) error
+	AddPiece(piece IPiece, x, y int) error
 	RemovePiece(x, y int) error
 }
 
 type Board struct {
 	board [8][8]IPiece
+}
+
+// Copy implements IBoard.
+func (b *Board) Copy() IBoard {
+	panic("unimplemented")
+}
+
+// FindKingPosition implements IBoard.
+func (b *Board) FindKingPosition(color Color) (int, int, error) {
+	panic("unimplemented")
+}
+
+// GetValidMoves implements IBoard.
+func (b *Board) GetValidMoves(fromX int, fromY int) ([]Position, error) {
+	panic("unimplemented")
+}
+
+// IsSquareAttacked implements IBoard.
+func (b *Board) IsSquareAttacked(x int, y int, byColor Color) (bool, error) {
+	panic("unimplemented")
+}
+
+// MovePiece implements IBoard.
+func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
+	panic("unimplemented")
+}
+
+// NewInitialBoard implements IBoard.
+func (b *Board) NewInitialBoard() IBoard {
+	panic("unimplemented")
+}
+
+// RemovePiece implements IBoard.
+func (b *Board) RemovePiece(x int, y int) error {
+	panic("unimplemented")
 }
 
 func NewBoard(board *[8][8]IPiece) *Board {
