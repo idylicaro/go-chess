@@ -1,6 +1,8 @@
 package chess
 
-import common "idylicaro/go-chess/internal/common"
+import (
+	common "idylicaro/go-chess/internal/common"
+)
 
 type IPiece interface {
 	GetValidMoves(fromX, fromY int, board *Board) []Position
@@ -21,10 +23,6 @@ func (p *Piece) GetType() common.PieceType {
 	return p.Type
 }
 
-type Pawn struct {
-	Piece
-}
-
 func NewPawn(color Color) *Pawn {
 	return &Pawn{
 		Piece: Piece{
@@ -32,6 +30,10 @@ func NewPawn(color Color) *Pawn {
 			Color: color,
 		},
 	}
+}
+
+type Pawn struct {
+	Piece
 }
 
 func (p *Pawn) GetValidMoves(fromX, fromY int, board *Board) []Position {
@@ -78,3 +80,42 @@ func (p *Pawn) GetValidMoves(fromX, fromY int, board *Board) []Position {
 	return validMoves
 
 }
+
+type Knight struct {
+	Piece
+}
+
+func NewKnight(color Color) *Knight {
+	return &Knight{
+		Piece: Piece{
+			Type:  common.Knight,
+			Color: color,
+		},
+	}
+}
+
+func (k *Knight) GetValidMoves(fromX, fromY int, board *Board) []Position {
+	validMoves := []Position{}
+	knightMoves := [][]int{
+		{-2, -1}, {-1, -2}, {1, -2}, {2, -1},
+		{2, 1}, {1, 2}, {-1, 2}, {-2, 1},
+	}
+
+	for _, move := range knightMoves {
+		dx, dy := move[0], move[1]
+		newX, newY := fromX+dx, fromY+dy
+		if err := board.IsValidCoordinates(newX, newY); err == nil {
+			if piece, err := board.GetPiece(newX, newY); err == nil && (piece == nil || piece.GetColor() != k.Color) {
+				validMoves = append(validMoves, Position{X: newX, Y: newY})
+			}
+		}
+
+	}
+
+	return validMoves
+}
+
+//TODO: Bishop
+//TODO: Rook
+//TODO: Queen
+//TODO: King
