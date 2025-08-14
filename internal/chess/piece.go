@@ -218,5 +218,59 @@ func (r *Rook) GetValidMoves(fromX, fromY int, board *Board) []Position {
 	return validMoves
 }
 
-//TODO: Queen
+type Queen struct {
+	Piece
+}
+
+func NewQueen(color Color) *Queen {
+	return &Queen{
+		Piece: Piece{
+			Type:  common.Queen,
+			Color: color,
+		},
+	}
+}
+
+func (q *Queen) GetValidMoves(fromX, fromY int, board *Board) []Position {
+	validMoves := []Position{}
+	// Queen moves in 8 directions (combination of Rook and Bishop)
+	directions := [][]int{
+		{0, -1},  // up
+		{-1, 0},  // left
+		{1, 0},   // right
+		{0, 1},   // down
+		{1, -1},  // right up
+		{-1, -1}, // left up
+		{1, 1},   // right down
+		{-1, 1},  // left down
+	}
+
+	for _, dir := range directions {
+		dx, dy := dir[0], dir[1]
+		for i := 1; i <= 7; i++ {
+			newX := fromX + dx*i
+			newY := fromY + dy*i
+
+			if err := board.IsValidCoordinates(newX, newY); err != nil {
+				break
+			}
+
+			piece, err := board.GetPiece(newX, newY)
+			if err != nil {
+				break
+			}
+
+			if piece == nil {
+				validMoves = append(validMoves, Position{X: newX, Y: newY})
+			} else {
+				if q.Color != piece.GetColor() {
+					validMoves = append(validMoves, Position{X: newX, Y: newY})
+				}
+				break
+			}
+		}
+	}
+	return validMoves
+}
+
 //TODO: King
