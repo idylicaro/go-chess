@@ -109,7 +109,7 @@ func TestPawnTable(t *testing.T) {
 	}
 }
 
-func TestKnightMoves(t *testing.T) {
+func TestKnightEmptyBoard(t *testing.T) {
 	board := emptyBoard()
 	knight := NewKnight(White)
 	board.board[4][4] = knight
@@ -117,6 +117,78 @@ func TestKnightMoves(t *testing.T) {
 	moves := knight.GetValidMoves(4, 4, board)
 	if len(moves) != 8 {
 		t.Errorf("Knight moves: got %d, want 8", len(moves))
+	}
+	expected := []Position{
+		{X: 3, Y: 2}, {X: 5, Y: 2}, {X: 2, Y: 3}, {X: 6, Y: 3},
+		{X: 2, Y: 5}, {X: 3, Y: 6}, {X: 6, Y: 5}, {X: 5, Y: 6},
+	}
+	for _, pos := range expected {
+		found := false
+		for _, m := range moves {
+			if m == pos {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Knight moves: missing expected position %v", pos)
+		}
+	}
+}
+
+func TestKnightBlockedByOwnPiece(t *testing.T) {
+	board := emptyBoard()
+	knight := NewKnight(White)
+	board.board[4][4] = knight
+	// Block some moves with own pieces
+	board.board[3][2] = NewPawn(White)
+	board.board[5][2] = NewPawn(White)
+
+	moves := knight.GetValidMoves(4, 4, board)
+	expected := []Position{
+		{X: 2, Y: 3}, {X: 6, Y: 3}, {X: 2, Y: 5}, {X: 3, Y: 6},
+		{X: 6, Y: 5}, {X: 5, Y: 6},
+	}
+	if len(moves) != len(expected) {
+		t.Errorf("Knight blocked: got %d moves, want %d", len(moves), len(expected))
+	}
+	for _, pos := range expected {
+		found := false
+		for _, m := range moves {
+			if m == pos {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Knight blocked: missing expected position %v", pos)
+		}
+	}
+}
+
+func TestKnightCanCaptureEnemy(t *testing.T) {
+	board := emptyBoard()
+	knight := NewKnight(White)
+	board.board[4][4] = knight
+	board.board[3][2] = NewPawn(Black)
+	board.board[5][2] = NewPawn(Black)
+
+	moves := knight.GetValidMoves(4, 4, board)
+	expected := []Position{
+		{X: 3, Y: 2}, {X: 5, Y: 2}, {X: 2, Y: 3}, {X: 6, Y: 3},
+		{X: 2, Y: 5}, {X: 3, Y: 6}, {X: 6, Y: 5}, {X: 5, Y: 6},
+	}
+	for _, pos := range expected {
+		found := false
+		for _, m := range moves {
+			if m == pos {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Knight capture: missing expected position %v", pos)
+		}
 	}
 }
 
