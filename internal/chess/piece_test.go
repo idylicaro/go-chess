@@ -192,7 +192,7 @@ func TestKnightCanCaptureEnemy(t *testing.T) {
 	}
 }
 
-func TestBishopMoves(t *testing.T) {
+func TestBishopEmptyBoard(t *testing.T) {
 	board := emptyBoard()
 	bishop := NewBishop(White)
 	board.board[4][4] = bishop
@@ -200,6 +200,59 @@ func TestBishopMoves(t *testing.T) {
 	moves := bishop.GetValidMoves(4, 4, board)
 	if len(moves) != 13 {
 		t.Errorf("Bishop moves: got %d, want 13", len(moves))
+	}
+}
+
+func TestBishopBlockedByOwnPiece(t *testing.T) {
+	board := emptyBoard()
+	bishop := NewBishop(White)
+	board.board[4][4] = bishop
+	// Block some moves with own pieces
+	board.board[3][3] = NewPawn(White)
+	board.board[5][3] = NewPawn(White)
+
+	moves := bishop.GetValidMoves(4, 4, board)
+	expected := []Position{
+		{X: 3, Y: 5}, {X: 2, Y: 6}, {X: 1, Y: 7}, {X: 5, Y: 5}, {X: 6, Y: 6}, {X: 7, Y: 7},
+	}
+	if len(moves) != len(expected) {
+		t.Errorf("Bishop blocked: got %d moves, want %d", len(moves), len(expected))
+	}
+	for _, pos := range expected {
+		found := false
+		for _, m := range moves {
+			if m == pos {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Bishop blocked: missing expected position %v", pos)
+		}
+	}
+}
+func TestBishopCanCaptureEnemy(t *testing.T) {
+	board := emptyBoard()
+	bishop := NewBishop(White)
+	board.board[4][4] = bishop
+	board.board[3][3] = NewPawn(Black)
+	board.board[5][3] = NewPawn(Black)
+
+	moves := bishop.GetValidMoves(4, 4, board)
+	expected := []Position{
+		{X: 3, Y: 3}, {X: 5, Y: 3}, {X: 3, Y: 5}, {X: 2, Y: 6}, {X: 1, Y: 7}, {X: 5, Y: 5}, {X: 6, Y: 6}, {X: 7, Y: 7},
+	}
+	for _, pos := range expected {
+		found := false
+		for _, m := range moves {
+			if m == pos {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Bishop capture: missing expected position %v", pos)
+		}
 	}
 }
 
