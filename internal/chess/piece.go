@@ -89,11 +89,11 @@ func (p *Pawn) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPass
 		// And if the diagonal capture position matches the en passant target
 		if (p.Color == White && fromY == 3) || (p.Color == Black && fromY == 4) {
 			// Diagonal attack position to the left
-			if leftAttackX == enPassantTarget.X && fromY == enPassantTarget.Y {
+			if leftAttackX == enPassantTarget.X && attackY == enPassantTarget.Y {
 				validMoves = append(validMoves, *enPassantTarget)
 			}
 			// Diagonal attack position to the right
-			if rightAttackX == enPassantTarget.X && fromY == enPassantTarget.Y {
+			if rightAttackX == enPassantTarget.X && attackY == enPassantTarget.Y {
 				validMoves = append(validMoves, *enPassantTarget)
 			}
 		}
@@ -101,6 +101,10 @@ func (p *Pawn) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPass
 
 	return validMoves
 
+}
+
+func (p *Pawn) SetHasMoved(moved bool) {
+	p.hasMoved = moved
 }
 
 type Knight struct {
@@ -240,6 +244,10 @@ func (r *Rook) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 		}
 	}
 	return validMoves
+}
+
+func (p *Rook) SetHasMoved(moved bool) {
+	p.hasMoved = moved
 }
 
 type Queen struct {
@@ -386,4 +394,8 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 		}
 	}
 	return validMoves
+}
+
+func (p *King) SetHasMoved(moved bool) {
+	p.hasMoved = moved
 }
