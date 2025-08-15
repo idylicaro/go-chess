@@ -256,7 +256,7 @@ func TestBishopCanCaptureEnemy(t *testing.T) {
 	}
 }
 
-func TestRookMoves(t *testing.T) {
+func TestRookMovesEmptyBoard(t *testing.T) {
 	board := emptyBoard()
 	rook := NewRook(White)
 	board.board[4][4] = rook
@@ -264,6 +264,60 @@ func TestRookMoves(t *testing.T) {
 	moves := rook.GetValidMoves(4, 4, board)
 	if len(moves) != 14 {
 		t.Errorf("Rook moves: got %d, want 14", len(moves))
+	}
+}
+
+func TestRookBlockedByOwnPiece(t *testing.T) {
+	board := emptyBoard()
+	rook := NewRook(White)
+	board.board[4][4] = rook
+	// Block some moves with own pieces
+	board.board[4][3] = NewPawn(White)
+	board.board[4][5] = NewPawn(White)
+
+	moves := rook.GetValidMoves(4, 4, board)
+	expected := []Position{
+		{X: 3, Y: 4}, {X: 2, Y: 4}, {X: 1, Y: 4}, {X: 0, Y: 4}, {X: 5, Y: 4}, {X: 6, Y: 4}, {X: 7, Y: 4},
+	}
+	if len(moves) != len(expected) {
+		t.Errorf("Rook blocked: got %d moves, want %d", len(moves), len(expected))
+	}
+	for _, pos := range expected {
+		found := false
+		for _, m := range moves {
+			if m == pos {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Rook blocked: missing expected position %v", pos)
+		}
+	}
+}
+
+func TestRookCanCaptureEnemy(t *testing.T) {
+	board := emptyBoard()
+	rook := NewRook(White)
+	board.board[4][4] = rook
+	board.board[3][4] = NewPawn(Black)
+	board.board[5][4] = NewPawn(Black)
+
+	moves := rook.GetValidMoves(4, 4, board)
+	expected := []Position{
+		{X: 3, Y: 4}, {X: 5, Y: 4}, {X: 4, Y: 5}, {X: 4, Y: 3},
+	}
+	for _, pos := range expected {
+		found := false
+		for _, m := range moves {
+			if m == pos {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Rook capture: missing expected position %v", pos)
+		}
 	}
 }
 
