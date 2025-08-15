@@ -6,11 +6,27 @@ import (
 	common "idylicaro/go-chess/internal/common"
 )
 
-func DisplayBoard(b chess.IBoard, validMoves []chess.Position) {
+func DisplayBoard(b chess.IBoard, perspective chess.Color, validMoves []chess.Position) {
 	fmt.Println("  -----------------")
-	for y := 0; y < 8; y++ {
-		fmt.Printf("%d |", 8-y)
-		for x := 0; x < 8; x++ {
+	var yStart, yEnd, yStep int
+	var xStart, xEnd, xStep int
+	var colLabels string
+	if perspective == chess.Black {
+		yStart, yEnd, yStep = 0, 8, 1
+		xStart, xEnd, xStep = 7, -1, -1
+		colLabels = "    h g f e d c b a"
+	} else {
+		yStart, yEnd, yStep = 7, -1, -1
+		xStart, xEnd, xStep = 0, 8, 1
+		colLabels = "    a b c d e f g h"
+	}
+	for y := yStart; y != yEnd; y += yStep {
+		if perspective == chess.Black {
+			fmt.Printf("%d |", y+1)
+		} else {
+			fmt.Printf("%d |", 8-y)
+		}
+		for x := xStart; x != xEnd; x += xStep {
 			piece, err := b.GetPiece(x, y)
 			if err == nil && piece != nil {
 				fmt.Printf(" %s", getPieceChar(piece))
@@ -33,7 +49,7 @@ func DisplayBoard(b chess.IBoard, validMoves []chess.Position) {
 		fmt.Println(" |")
 	}
 	fmt.Println("  -----------------")
-	fmt.Println("    a b c d e f g h")
+	fmt.Println(colLabels)
 }
 
 // getPieceChar converte uma peça em sua representação de caractere

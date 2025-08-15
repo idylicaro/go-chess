@@ -14,20 +14,19 @@ type IBoard interface {
 	MovePiece(fromX, fromY, toX, toY int) error
 
 	IsValidCoordinates(x, y int) error
-	GetValidMoves(fromX, fromY int) ([]Position, error)
-	NewInitialBoard() IBoard
 
-	//verificar o estado do tabuleiro de forma geral
-	FindKingPosition(color Color) (int, int, error)
-	IsSquareAttacked(x, y int, byColor Color) (bool, error)
+	GetKingPosition(color Color) (int, int)
+	SetKingPosition(color Color, x, y int)
+	IsSquareAttacked(x, y int, byColor Color) bool
 
-	Copy() IBoard
 	AddPiece(piece IPiece, x, y int) error
 	RemovePiece(x, y int) error
+	Copy() IBoard
 }
 
 type Board struct {
-	board [8][8]IPiece
+	board   [8][8]IPiece
+	kingPos map[Color]Position
 }
 
 // Copy implements IBoard.
@@ -35,19 +34,45 @@ func (b *Board) Copy() IBoard {
 	panic("unimplemented")
 }
 
-// FindKingPosition implements IBoard.
-func (b *Board) FindKingPosition(color Color) (int, int, error) {
-	panic("unimplemented")
+func (b *Board) SetKingPosition(color Color, x, y int) {
+	b.kingPos[color] = Position{X: x, Y: y}
 }
 
-// GetValidMoves implements IBoard.
-func (b *Board) GetValidMoves(fromX int, fromY int) ([]Position, error) {
-	panic("unimplemented")
+// GetKingPosition implements IBoard.
+func (b *Board) GetKingPosition(color Color) (int, int) {
+	return b.kingPos[color].X, b.kingPos[color].Y
 }
 
-// IsSquareAttacked implements IBoard.
-func (b *Board) IsSquareAttacked(x int, y int, byColor Color) (bool, error) {
-	panic("unimplemented")
+// IsSquareAttacked determines whether the square at coordinates (x, y) is attacked by any piece of the specified color (byColor).
+// It iterates over all squares on the board, checks for pieces of the given color, and evaluates their valid moves.
+// If any valid move targets the specified square, the function returns true, indicating the square is under attack.
+// Returns false if no attacking piece is found.
+//
+// Parameters:
+//
+//	x, y    - The coordinates of the square to check.
+//	byColor - The color of the pieces to consider as attackers.
+//
+// Returns:
+//
+//	bool - True if the square is attacked by any piece of the specified color, false otherwise.
+func (b *Board) IsSquareAttacked(x, y int, byColor Color) bool {
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			piece, _ := b.GetPiece(i, j)
+
+			if piece != nil && piece.GetColor() == byColor {
+				moves := piece.GetValidMoves(i, j, b)
+				for _, move := range moves {
+					if move.X == x && move.Y == y {
+						return true
+					}
+				}
+			}
+
+		}
+	}
+	return false
 }
 
 // MovePiece implements IBoard.
@@ -55,9 +80,47 @@ func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 	panic("unimplemented")
 }
 
-// NewInitialBoard implements IBoard.
-func (b *Board) NewInitialBoard() IBoard {
-	panic("unimplemented")
+func NewInitialBoard() IBoard {
+	// Setup initial positions for all pieces
+	initialBoard := &Board{
+		board:   [8][8]IPiece{},
+		kingPos: make(map[Color]Position),
+	}
+	// Pawn setup
+	for i := 0; i < 8; i++ {
+		initialBoard.board[1][i] = NewPawn(White)
+		initialBoard.board[6][i] = NewPawn(Black)
+	}
+	// Rook setup
+	initialBoard.board[0][0] = NewRook(White)
+	initialBoard.board[0][7] = NewRook(White)
+	initialBoard.board[7][0] = NewRook(Black)
+	initialBoard.board[7][7] = NewRook(Black)
+
+	// Knight setup
+	initialBoard.board[0][1] = NewKnight(White)
+	initialBoard.board[0][6] = NewKnight(White)
+	initialBoard.board[7][1] = NewKnight(Black)
+	initialBoard.board[7][6] = NewKnight(Black)
+
+	// Bishop setup
+	initialBoard.board[0][2] = NewBishop(White)
+	initialBoard.board[0][5] = NewBishop(White)
+	initialBoard.board[7][2] = NewBishop(Black)
+	initialBoard.board[7][5] = NewBishop(Black)
+
+	// Queen setup
+	initialBoard.board[0][3] = NewQueen(White)
+	initialBoard.board[7][3] = NewQueen(Black)
+
+	// King setup
+	initialBoard.board[0][4] = NewKing(White)
+	initialBoard.board[7][4] = NewKing(Black)
+	initialBoard.kingPos[White] = Position{X: 0, Y: 4}
+	initialBoard.kingPos[Black] = Position{X: 7, Y: 4}
+
+	// Place pieces on the board
+	return initialBoard
 }
 
 // RemovePiece implements IBoard.
