@@ -2,6 +2,7 @@ package chess
 
 import (
 	"errors"
+	common "idylicaro/go-chess/internal/common"
 )
 
 type Position struct {
@@ -29,16 +30,10 @@ type Board struct {
 	kingPos map[Color]Position
 }
 
-// Copy implements IBoard.
-func (b *Board) Copy() IBoard {
-	panic("unimplemented")
-}
-
 func (b *Board) SetKingPosition(color Color, x, y int) {
 	b.kingPos[color] = Position{X: x, Y: y}
 }
 
-// GetKingPosition implements IBoard.
 func (b *Board) GetKingPosition(color Color) (int, int) {
 	return b.kingPos[color].X, b.kingPos[color].Y
 }
@@ -75,9 +70,42 @@ func (b *Board) IsSquareAttacked(x, y int, byColor Color) bool {
 	return false
 }
 
-// MovePiece implements IBoard.
 func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
-	panic("unimplemented")
+	err := b.IsValidCoordinates(fromX, fromY)
+	if err != nil {
+		return err
+	}
+	err = b.IsValidCoordinates(toX, toY)
+	if err != nil {
+		return err
+	}
+
+	piece, err := b.GetPiece(fromX, fromY)
+	if err != nil {
+		return err
+	}
+
+	err = b.RemovePiece(fromX, fromY)
+	if err != nil {
+		return err
+	}
+
+	err = b.AddPiece(piece, toX, toY)
+	if err != nil {
+		return err
+	}
+	if piece.GetType() == common.King || piece.GetType() == common.Rook || piece.GetType() == common.Pawn {
+		if piece.GetType() == common.King {
+			piece.(*King).SetHasMoved(true)
+			b.kingPos[piece.GetColor()] = Position{X: toX, Y: toY}
+		} else if piece.GetType() == common.Rook {
+			piece.(*Rook).SetHasMoved(true)
+		} else if piece.GetType() == common.Pawn {
+			piece.(*Pawn).SetHasMoved(true)
+		}
+	}
+
+	return nil
 }
 
 func NewInitialBoard() IBoard {
@@ -123,9 +151,13 @@ func NewInitialBoard() IBoard {
 	return initialBoard
 }
 
-// RemovePiece implements IBoard.
 func (b *Board) RemovePiece(x int, y int) error {
-	panic("unimplemented")
+	err := b.IsValidCoordinates(x, y)
+	if err != nil {
+		return err
+	}
+	b.board[x][y] = nil
+	return nil
 }
 
 func NewBoard(board *[8][8]IPiece) *Board {
@@ -166,4 +198,23 @@ func (b *Board) IsValidCoordinates(x, y int) error {
 		return errors.New("invalid coordinates")
 	}
 	return nil
+}
+
+// Copy is a method to create a deep copy of the board
+func (b *Board) Copy() IBoard {
+	newBoard := &Board{
+		board:   [8][8]IPiece{},
+		kingPos: make(map[Color]Position),
+	}
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			if b.board[i][j] != nil {
+				newBoard.board[i][j] = b.board[i][j].Copy()
+			}
+		}
+	}
+	for color, pos := range b.kingPos {
+		newBoard.kingPos[color] = pos
+	}
+	return newBoard
 }
