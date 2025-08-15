@@ -13,6 +13,7 @@ type IBoard interface {
 	GetPiece(x, y int) (IPiece, error)
 	MovePiece(fromX, fromY, toX, toY int) error
 
+	IsValidCoordinates(x, y int) error
 	GetValidMoves(fromX, fromY int) ([]Position, error)
 	NewInitialBoard() IBoard
 

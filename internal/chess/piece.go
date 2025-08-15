@@ -5,9 +5,9 @@ import (
 )
 
 type IPiece interface {
-	GetValidMoves(fromX, fromY int, board *Board) []Position
 	GetColor() Color
 	GetType() common.PieceType
+	GetValidMoves(fromX, fromY int, board IBoard) []Position
 }
 
 type Piece struct {
@@ -23,20 +23,27 @@ func (p *Piece) GetType() common.PieceType {
 	return p.Type
 }
 
+type Pawn struct {
+	Piece
+	hasMoved bool
+}
+
 func NewPawn(color Color) *Pawn {
 	return &Pawn{
 		Piece: Piece{
 			Type:  common.Pawn,
 			Color: color,
 		},
+		hasMoved: false,
 	}
 }
 
-type Pawn struct {
-	Piece
+func (p *Pawn) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+	// Calls the specialized method without enPassant
+	return p.GetValidMovesWithEnPassant(fromX, fromY, board, nil)
 }
 
-func (p *Pawn) GetValidMoves(fromX, fromY int, board *Board) []Position {
+func (p *Pawn) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPassantTarget *Position) []Position {
 	// 3 - has avaliable enemy piece to attack ?
 	validMoves := []Position{}
 	var direction int
@@ -53,7 +60,7 @@ func (p *Pawn) GetValidMoves(fromX, fromY int, board *Board) []Position {
 		validMoves = append(validMoves, Position{X: fromX, Y: oneStepY})
 
 		// intial step verification
-		if (p.Color == White && fromY == 6) || (p.Color == Black && fromY == 1) {
+		if !p.hasMoved {
 			twoStepsY := fromY + 2*direction
 			if piece, err := board.GetPiece(fromX, twoStepsY); err == nil && piece == nil {
 				validMoves = append(validMoves, Position{X: fromX, Y: twoStepsY})
@@ -77,6 +84,21 @@ func (p *Pawn) GetValidMoves(fromX, fromY int, board *Board) []Position {
 		}
 	}
 
+	if enPassantTarget != nil {
+		// Check if the pawn is on the correct rank (rank 4 for white, rank 5 for black)
+		// And if the diagonal capture position matches the en passant target
+		if (p.Color == White && fromY == 3) || (p.Color == Black && fromY == 4) {
+			// Diagonal attack position to the left
+			if leftAttackX == enPassantTarget.X && fromY == enPassantTarget.Y {
+				validMoves = append(validMoves, *enPassantTarget)
+			}
+			// Diagonal attack position to the right
+			if rightAttackX == enPassantTarget.X && fromY == enPassantTarget.Y {
+				validMoves = append(validMoves, *enPassantTarget)
+			}
+		}
+	}
+
 	return validMoves
 
 }
@@ -94,7 +116,7 @@ func NewKnight(color Color) *Knight {
 	}
 }
 
-func (k *Knight) GetValidMoves(fromX, fromY int, board *Board) []Position {
+func (k *Knight) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	knightMoves := [][]int{
 		{-2, -1}, {-1, -2}, {1, -2}, {2, -1},
@@ -128,7 +150,7 @@ func NewBishop(color Color) *Bishop {
 	}
 }
 
-func (bi *Bishop) GetValidMoves(fromX, fromY int, board *Board) []Position {
+func (bi *Bishop) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	// Bishop moves in 4 diagonal directions
 	directions := [][]int{
@@ -169,6 +191,7 @@ func (bi *Bishop) GetValidMoves(fromX, fromY int, board *Board) []Position {
 
 type Rook struct {
 	Piece
+	hasMoved bool
 }
 
 func NewRook(color Color) *Rook {
@@ -177,10 +200,11 @@ func NewRook(color Color) *Rook {
 			Type:  common.Rook,
 			Color: color,
 		},
+		hasMoved: false,
 	}
 }
 
-func (r *Rook) GetValidMoves(fromX, fromY int, board *Board) []Position {
+func (r *Rook) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	// Rook moves in 4 straight directions
 	directions := [][]int{
@@ -231,7 +255,7 @@ func NewQueen(color Color) *Queen {
 	}
 }
 
-func (q *Queen) GetValidMoves(fromX, fromY int, board *Board) []Position {
+func (q *Queen) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	// Queen moves in 8 directions (combination of Rook and Bishop)
 	directions := [][]int{
@@ -273,4 +297,53 @@ func (q *Queen) GetValidMoves(fromX, fromY int, board *Board) []Position {
 	return validMoves
 }
 
-//TODO: King
+type King struct {
+	Piece
+	hasMoved bool
+}
+
+func NewKing(color Color) *King {
+	return &King{
+		Piece: Piece{
+			Type:  common.King,
+			Color: color,
+		},
+		hasMoved: false,
+	}
+}
+
+func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+	validMoves := []Position{}
+	// King moves in 8 possible directions
+	directions := [][]int{
+		{0, -1},  // up
+		{-1, 0},  // left
+		{1, 0},   // right
+		{0, 1},   // down
+		{1, -1},  // right up
+		{-1, -1}, // left up
+		{1, 1},   // right down
+		{-1, 1},  // left down
+	}
+
+	for _, dir := range directions {
+		dx, dy := dir[0], dir[1]
+		newX := fromX + dx
+		newY := fromY + dy
+
+		if err := board.IsValidCoordinates(newX, newY); err != nil {
+			continue
+		}
+
+		piece, err := board.GetPiece(newX, newY)
+		if err != nil {
+			continue
+		}
+
+		if piece == nil || piece.GetColor() != k.Color {
+			validMoves = append(validMoves, Position{X: newX, Y: newY})
+		}
+	}
+
+	return validMoves
+}
