@@ -6,39 +6,21 @@ import (
 	common "idylicaro/go-chess/internal/common"
 )
 
-func DisplayBoard(b chess.IBoard, perspective chess.Color, validMoves []chess.Position) {
+func DisplayBoard(b chess.IBoard, validMoves []chess.Position) {
 	fmt.Println("  -----------------")
-	var yStart, yEnd, yStep int
-	var xStart, xEnd, xStep int
-	var colLabels string
-	if perspective == chess.Black {
-		yStart, yEnd, yStep = 0, 8, 1
-		xStart, xEnd, xStep = 7, -1, -1
-		colLabels = "    h g f e d c b a"
-	} else {
-		yStart, yEnd, yStep = 7, -1, -1
-		xStart, xEnd, xStep = 0, 8, 1
-		colLabels = "    a b c d e f g h"
-	}
-	for y := yStart; y != yEnd; y += yStep {
-		if perspective == chess.Black {
-			fmt.Printf("%d |", y+1)
-		} else {
-			fmt.Printf("%d |", 8-y)
-		}
-		for x := xStart; x != xEnd; x += xStep {
+	for y, py := 0, 8; y < 8; y, py = y+1, py-1 { // py == presentationY
+		fmt.Printf("%d |", py)
+		for x := 0; x < 8; x++ { // col a-h
 			piece, err := b.GetPiece(x, y)
 			if err == nil && piece != nil {
 				fmt.Printf(" %s", getPieceChar(piece))
 			} else {
 				isMove := false
-				if len(validMoves) > 0 {
-					for _, move := range validMoves {
-						if move.X == x && move.Y == y {
-							fmt.Printf(" x")
-							isMove = true
-							break
-						}
+				for _, move := range validMoves {
+					if move.X == x && move.Y == y {
+						fmt.Printf(" x")
+						isMove = true
+						break
 					}
 				}
 				if !isMove {
@@ -49,10 +31,34 @@ func DisplayBoard(b chess.IBoard, perspective chess.Color, validMoves []chess.Po
 		fmt.Println(" |")
 	}
 	fmt.Println("  -----------------")
-	fmt.Println(colLabels)
+	fmt.Println("    a b c d e f g h")
 }
 
-// getPieceChar converte uma peça em sua representação de caractere
+func DisplayGameState(game *chess.Game) {
+	var turn, state string
+	if game.GetCurrentTurn() == chess.White {
+		turn = "White"
+	} else {
+		turn = "Black"
+	}
+
+	switch game.GetState() {
+	case chess.InProgress:
+		state = "In Progress"
+	case chess.Check:
+		state = "Check"
+	case chess.Checkmate:
+		state = "Checkmate"
+	case chess.Stalemate:
+		state = "Stalemate"
+	case chess.Draw:
+		state = "Draw"
+	}
+
+	fmt.Printf("\n--- Current State: %s | Turn: %s ---\n", state, turn)
+}
+
+// getPieceChar converts a piece to its character representation
 func getPieceChar(piece chess.IPiece) string {
 	switch piece.GetType() {
 	case common.Pawn:

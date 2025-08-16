@@ -116,36 +116,36 @@ func NewInitialBoard() IBoard {
 	}
 	// Pawn setup
 	for i := 0; i < 8; i++ {
-		initialBoard.board[1][i] = NewPawn(White)
-		initialBoard.board[6][i] = NewPawn(Black)
+		initialBoard.board[i][6] = NewPawn(White)
+		initialBoard.board[i][1] = NewPawn(Black)
 	}
 	// Rook setup
-	initialBoard.board[0][0] = NewRook(White)
 	initialBoard.board[0][7] = NewRook(White)
+	initialBoard.board[7][7] = NewRook(White)
+	initialBoard.board[0][0] = NewRook(Black)
 	initialBoard.board[7][0] = NewRook(Black)
-	initialBoard.board[7][7] = NewRook(Black)
 
 	// Knight setup
-	initialBoard.board[0][1] = NewKnight(White)
-	initialBoard.board[0][6] = NewKnight(White)
-	initialBoard.board[7][1] = NewKnight(Black)
-	initialBoard.board[7][6] = NewKnight(Black)
+	initialBoard.board[1][7] = NewKnight(White)
+	initialBoard.board[6][7] = NewKnight(White)
+	initialBoard.board[1][0] = NewKnight(Black)
+	initialBoard.board[6][0] = NewKnight(Black)
 
 	// Bishop setup
-	initialBoard.board[0][2] = NewBishop(White)
-	initialBoard.board[0][5] = NewBishop(White)
-	initialBoard.board[7][2] = NewBishop(Black)
-	initialBoard.board[7][5] = NewBishop(Black)
+	initialBoard.board[2][7] = NewBishop(White)
+	initialBoard.board[5][7] = NewBishop(White)
+	initialBoard.board[2][0] = NewBishop(Black)
+	initialBoard.board[5][0] = NewBishop(Black)
 
 	// Queen setup
-	initialBoard.board[0][3] = NewQueen(White)
-	initialBoard.board[7][3] = NewQueen(Black)
+	initialBoard.board[3][7] = NewQueen(White)
+	initialBoard.board[3][0] = NewQueen(Black)
 
 	// King setup
-	initialBoard.board[0][4] = NewKing(White)
-	initialBoard.board[7][4] = NewKing(Black)
-	initialBoard.kingPos[White] = Position{X: 0, Y: 4}
-	initialBoard.kingPos[Black] = Position{X: 7, Y: 4}
+	initialBoard.board[4][7] = NewKing(White)
+	initialBoard.board[4][0] = NewKing(Black)
+	initialBoard.kingPos[White] = Position{X: 4, Y: 7}
+	initialBoard.kingPos[Black] = Position{X: 4, Y: 0}
 
 	// Place pieces on the board
 	return initialBoard

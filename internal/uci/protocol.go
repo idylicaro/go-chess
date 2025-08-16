@@ -82,7 +82,6 @@ func parseCoordinate(uciCoord string) (x, y int, err error) {
 	if y < 0 || y > 7 {
 		return 0, 0, fmt.Errorf("invalid row: %c", yChar)
 	}
-	// Remember that board rows (1-8) are inverted in the matrix (7-0).
 	y = 7 - y
 	return x, y, nil
 }
