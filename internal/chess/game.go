@@ -54,7 +54,6 @@ func (g *Game) GetBoard() IBoard {
 func (g *Game) Move(move uci.Move) error {
 	pieceToMove, _ := g.board.GetPiece(move.FromX, move.FromY)
 
-	fmt.Printf("[DEBUG] Moving piece: %v | PieceColor: %v | Check Bool: %v\n", pieceToMove, pieceToMove.GetColor(), pieceToMove.GetColor() != g.currentTurn)
 	if pieceToMove == nil || pieceToMove.GetColor() != g.currentTurn {
 		return fmt.Errorf("not your piece or not your turn")
 	}

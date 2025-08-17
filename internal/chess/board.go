@@ -2,6 +2,7 @@ package chess
 
 import (
 	"errors"
+	"fmt"
 	common "idylicaro/go-chess/internal/common"
 )
 
@@ -85,15 +86,18 @@ func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 		return err
 	}
 
-	err = b.RemovePiece(fromX, fromY)
+	if piece == nil {
+		return errors.New("could not get piece from (" + fmt.Sprintf("%d, %d", fromX, fromY) + "): no piece found at coordinates")
+	}
+
+	err = b.RemovePiece(toX, toY)
 	if err != nil {
 		return err
 	}
 
-	err = b.AddPiece(piece, toX, toY)
-	if err != nil {
-		return err
-	}
+	b.board[toX][toY] = piece
+	_ = b.RemovePiece(fromX, fromY)
+
 	if piece.GetType() == common.King || piece.GetType() == common.Rook || piece.GetType() == common.Pawn {
 		if piece.GetType() == common.King {
 			piece.(*King).SetHasMoved(true)
@@ -160,14 +164,16 @@ func (b *Board) RemovePiece(x int, y int) error {
 	return nil
 }
 
-func NewBoard(board *[8][8]IPiece) *Board {
+func NewBoard(board *[8][8]IPiece) IBoard {
 	if board == nil {
 		return &Board{
-			board: [8][8]IPiece{},
+			board:   [8][8]IPiece{},
+			kingPos: make(map[Color]Position),
 		}
 	}
 	return &Board{
-		board: *board,
+		board:   *board,
+		kingPos: make(map[Color]Position),
 	}
 }
 
@@ -175,6 +181,9 @@ func (b *Board) GetPiece(x, y int) (IPiece, error) {
 	err := b.IsValidCoordinates(x, y)
 	if err != nil {
 		return nil, err
+	}
+	if b.board[x][y] == nil {
+		return nil, nil
 	}
 	return b.board[x][y], nil
 }
