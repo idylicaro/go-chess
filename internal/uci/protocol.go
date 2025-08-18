@@ -22,13 +22,20 @@ var col = map[rune]int{
 	'h': 7,
 }
 
+var promotionPieceMap = map[rune]common.PieceType{
+	'q': common.Queen,
+	'r': common.Rook,
+	'b': common.Bishop,
+	'n': common.Knight,
+}
+
 // A public function to convert a UCI string into a Move struct.
 func ParseMove(uciMove string) (Move, error) {
 	if len(uciMove) < 4 || len(uciMove) > 5 {
 		return Move{}, fmt.Errorf("invalid move: %s", uciMove)
 	}
 
-	fromX, fromY, err := parseCoordinate(uciMove[0:2])
+	fromX, fromY, err := parseCoordinate(uciMove[:2])
 	if err != nil {
 		return Move{}, err
 	}
@@ -45,19 +52,22 @@ func ParseMove(uciMove string) (Move, error) {
 	}
 
 	if len(uciMove) == 5 {
-		promoChar := uciMove[4]
-		switch promoChar {
-		case 'q':
-			move.Promotion = common.Queen
-		case 'r':
-			move.Promotion = common.Rook
-		case 'b':
-			move.Promotion = common.Bishop
-		case 'n':
-			move.Promotion = common.Knight
-		default:
-			return Move{}, fmt.Errorf("promotion char invalid: %c", promoChar)
+		piece, ok := promotionPieceMap[rune(uciMove[4])]
+		if !ok {
+			return Move{}, fmt.Errorf("invalid promotion character: %q", uciMove[4])
 		}
+
+		// Only allow promotion for pawn moves to last rank
+		// White pawn: fromY == 1, toY == 0
+		// Black pawn: fromY == 6, toY == 7
+		isWhitePromotion := fromY == 1 && toY == 0
+		isBlackPromotion := fromY == 6 && toY == 7
+
+		if !(isWhitePromotion || isBlackPromotion) {
+			return Move{}, fmt.Errorf("promotion only allowed for pawn moves to last rank")
+		}
+
+		move.Promotion = piece
 	}
 
 	return move, nil

@@ -94,3 +94,60 @@ func TestParseMove(t *testing.T) {
 		}
 	}
 }
+
+func TestParsePromotion(t *testing.T) {
+	var tests = []struct {
+		input         string
+		expectedMove  Move
+		expectedError bool
+		description   string
+	}{
+		// Valid promotion scenarios
+		{"a7a8q", Move{FromX: 0, FromY: 1, ToX: 0, ToY: 0, Promotion: common.Queen}, false, "Promote to Queen"},
+		{"b7b8r", Move{FromX: 1, FromY: 1, ToX: 1, ToY: 0, Promotion: common.Rook}, false, "Promote to Rook"},
+		{"c7c8b", Move{FromX: 2, FromY: 1, ToX: 2, ToY: 0, Promotion: common.Bishop}, false, "Promote to Bishop"},
+		{"d7d8n", Move{FromX: 3, FromY: 1, ToX: 3, ToY: 0, Promotion: common.Knight}, false, "Promote to Knight"},
+
+		// Black pawn promotion (from rank 2 to rank 1)
+		{"e2e1q", Move{FromX: 4, FromY: 6, ToX: 4, ToY: 7, Promotion: common.Queen}, false, "Black pawn promote to Queen"},
+		{"f2f1r", Move{FromX: 5, FromY: 6, ToX: 5, ToY: 7, Promotion: common.Rook}, false, "Black pawn promote to Rook"},
+		{"g2g1b", Move{FromX: 6, FromY: 6, ToX: 6, ToY: 7, Promotion: common.Bishop}, false, "Black pawn promote to Bishop"},
+		{"h2h1n", Move{FromX: 7, FromY: 6, ToX: 7, ToY: 7, Promotion: common.Knight}, false, "Black pawn promote to Knight"},
+
+		// Capture with promotion
+		{"a7b8q", Move{FromX: 0, FromY: 1, ToX: 1, ToY: 0, Promotion: common.Queen}, false, "Capture and promote to Queen"},
+		{"b2a1r", Move{FromX: 1, FromY: 6, ToX: 0, ToY: 7, Promotion: common.Rook}, false, "Black capture and promote to Rook"},
+
+		// Invalid promotion scenarios
+		{"a7a8k", Move{}, true, "Invalid promotion piece (king)"},
+		{"a7a8p", Move{}, true, "Invalid promotion piece (pawn)"},
+		{"a7a8x", Move{}, true, "Invalid promotion character"},
+		{"a7a8Q", Move{}, true, "Uppercase promotion character (should be lowercase)"},
+
+		// Non-promotion moves with 5 characters (should fail)
+		{"e4e5q", Move{}, true, "Non-promotion move with promotion character"},
+		{"d3d4n", Move{}, true, "Non-promotion move with promotion character"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			actualMove, err := ParseMove(tt.input)
+
+			// Check if the expected error occurred
+			if (err != nil) != tt.expectedError {
+				t.Errorf("ParseMove(%q): expected error %v, got %v", tt.input, tt.expectedError, err)
+				return
+			}
+
+			// If error was expected, no need to check move
+			if tt.expectedError {
+				return
+			}
+
+			// Check if move is correct
+			if actualMove != tt.expectedMove {
+				t.Errorf("ParseMove(%q): expected move: %+v, got move: %+v", tt.input, tt.expectedMove, actualMove)
+			}
+		})
+	}
+}
