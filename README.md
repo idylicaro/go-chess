@@ -87,3 +87,16 @@ The UCI format for a move is a string like "e2e4".
     6 [ ][ ][ ][ ][ ][ ][ ][ ]
     7 [ ][ ][ ][ ][ ][ ][ ][ ]
 ```
+
+---
+
+## TODO
+Promoção não está funcionando corretamente.
+DRAW...
+TIME
+
+
+## Game Tests
+To run script to run some scenarios, you need:
+- execute `go build -o ./bin/chess ./cmd/cli/main.go ./cmd/cli/display.go`
+- run `go run run_tests.go `
