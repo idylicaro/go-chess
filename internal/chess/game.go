@@ -11,6 +11,7 @@ type Game struct {
 	currentTurn     Color
 	state           GameState
 	enPassantTarget *Position
+	moveHistory     []uci.Move
 }
 
 type Color int
@@ -154,6 +155,8 @@ func (g *Game) Move(move uci.Move) error {
 			g.enPassantTarget = &Position{X: move.ToX, Y: targetY}
 		}
 	}
+
+	g.moveHistory = append(g.moveHistory, move)
 
 	g.currentTurn = g.getOpponentColor()
 
