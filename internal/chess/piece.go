@@ -97,15 +97,24 @@ func (p *Pawn) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPass
 
 	if enPassantTarget != nil {
 		// Check if the pawn is on the correct rank (rank 4 for white, rank 5 for black)
-		// And if the diagonal capture position matches the en passant target
 		if (p.Color == White && fromY == 3) || (p.Color == Black && fromY == 4) {
 			// Diagonal attack position to the left
 			if leftAttackX == enPassantTarget.X && attackY == enPassantTarget.Y {
-				validMoves = append(validMoves, *enPassantTarget)
+				// Verify there's actually an enemy pawn to capture via en passant
+				capturedPawnY := fromY
+				if enemyPawn, err := board.GetPiece(enPassantTarget.X, capturedPawnY); err == nil &&
+					enemyPawn != nil && enemyPawn.GetType() == common.Pawn && enemyPawn.GetColor() != p.Color {
+					validMoves = append(validMoves, *enPassantTarget)
+				}
 			}
 			// Diagonal attack position to the right
 			if rightAttackX == enPassantTarget.X && attackY == enPassantTarget.Y {
-				validMoves = append(validMoves, *enPassantTarget)
+				// Verify there's actually an enemy pawn to capture via en passant
+				capturedPawnY := fromY
+				if enemyPawn, err := board.GetPiece(enPassantTarget.X, capturedPawnY); err == nil &&
+					enemyPawn != nil && enemyPawn.GetType() == common.Pawn && enemyPawn.GetColor() != p.Color {
+					validMoves = append(validMoves, *enPassantTarget)
+				}
 			}
 		}
 	}
@@ -414,39 +423,47 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	// Castling check
 	if !k.hasMoved {
 		if k.GetColor() == White {
-			// Left
-			if piece, _ := board.GetPiece(0, 7); piece != nil && piece.GetType() == common.Rook && !piece.(*Rook).hasMoved {
-				p1, _ := board.GetPiece(1, 7)
-				p2, _ := board.GetPiece(2, 7)
-				p3, _ := board.GetPiece(3, 7)
-				if p1 == nil && p2 == nil && p3 == nil {
-					validMoves = append(validMoves, Position{X: 2, Y: 7})
+			// Left castling
+			if piece, _ := board.GetPiece(0, 7); piece != nil && piece.GetType() == common.Rook {
+				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
+					p1, _ := board.GetPiece(1, 7)
+					p2, _ := board.GetPiece(2, 7)
+					p3, _ := board.GetPiece(3, 7)
+					if p1 == nil && p2 == nil && p3 == nil {
+						validMoves = append(validMoves, Position{X: 2, Y: 7})
+					}
 				}
 			}
-			// Right
-			if piece, _ := board.GetPiece(7, 7); piece != nil && piece.GetType() == common.Rook && !piece.(*Rook).hasMoved {
-				p5, _ := board.GetPiece(5, 7)
-				p6, _ := board.GetPiece(6, 7)
-				if p5 == nil && p6 == nil {
-					validMoves = append(validMoves, Position{X: 6, Y: 7})
+			// Right castling
+			if piece, _ := board.GetPiece(7, 7); piece != nil && piece.GetType() == common.Rook {
+				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
+					p5, _ := board.GetPiece(5, 7)
+					p6, _ := board.GetPiece(6, 7)
+					if p5 == nil && p6 == nil {
+						validMoves = append(validMoves, Position{X: 6, Y: 7})
+					}
 				}
 			}
 		} else {
-			// left
-			if piece, _ := board.GetPiece(0, 0); piece != nil && piece.GetType() == common.Rook && !piece.(*Rook).hasMoved {
-				p1, _ := board.GetPiece(1, 0)
-				p2, _ := board.GetPiece(2, 0)
-				p3, _ := board.GetPiece(3, 0)
-				if p1 == nil && p2 == nil && p3 == nil {
-					validMoves = append(validMoves, Position{X: 2, Y: 0})
+			// Left castling
+			if piece, _ := board.GetPiece(0, 0); piece != nil && piece.GetType() == common.Rook {
+				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
+					p1, _ := board.GetPiece(1, 0)
+					p2, _ := board.GetPiece(2, 0)
+					p3, _ := board.GetPiece(3, 0)
+					if p1 == nil && p2 == nil && p3 == nil {
+						validMoves = append(validMoves, Position{X: 2, Y: 0})
+					}
 				}
 			}
-			// Right
-			if piece, _ := board.GetPiece(7, 0); piece != nil && piece.GetType() == common.Rook && !piece.(*Rook).hasMoved {
-				p5, _ := board.GetPiece(5, 0)
-				p6, _ := board.GetPiece(6, 0)
-				if p5 == nil && p6 == nil {
-					validMoves = append(validMoves, Position{X: 6, Y: 0})
+			// Right castling
+			if piece, _ := board.GetPiece(7, 0); piece != nil && piece.GetType() == common.Rook {
+				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
+					p5, _ := board.GetPiece(5, 0)
+					p6, _ := board.GetPiece(6, 0)
+					if p5 == nil && p6 == nil {
+						validMoves = append(validMoves, Position{X: 6, Y: 0})
+					}
 				}
 			}
 		}

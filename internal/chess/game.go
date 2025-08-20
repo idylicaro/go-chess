@@ -118,17 +118,26 @@ func (g *Game) Move(move uci.Move) error {
 	}
 
 	if isPromotion {
-		// Remove the pawn from the board
-		g.board.RemovePiece(move.FromX, move.FromY)
+		err := g.board.RemovePiece(move.FromX, move.FromY)
+		if err != nil {
+			return fmt.Errorf("failed to remove pawn during promotion: %v", err)
+		}
+		_ = g.board.RemovePiece(move.ToX, move.ToY) // Ignore error if square is empty
 
+		var promotedPiece IPiece
 		if move.Promotion == common.Rook {
-			g.board.AddPiece(NewRook(pieceToMove.GetColor()), move.ToX, move.ToY)
+			promotedPiece = NewRook(pieceToMove.GetColor())
 		} else if move.Promotion == common.Bishop {
-			g.board.AddPiece(NewBishop(pieceToMove.GetColor()), move.ToX, move.ToY)
+			promotedPiece = NewBishop(pieceToMove.GetColor())
 		} else if move.Promotion == common.Knight {
-			g.board.AddPiece(NewKnight(pieceToMove.GetColor()), move.ToX, move.ToY)
+			promotedPiece = NewKnight(pieceToMove.GetColor())
 		} else { // Queen is the default promotion
-			g.board.AddPiece(NewQueen(pieceToMove.GetColor()), move.ToX, move.ToY)
+			promotedPiece = NewQueen(pieceToMove.GetColor())
+		}
+
+		err = g.board.SetPiece(promotedPiece, move.ToX, move.ToY)
+		if err != nil {
+			return fmt.Errorf("failed to set promoted piece: %v", err)
 		}
 	} else {
 		// if not a promotion, move the piece
@@ -176,13 +185,17 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 		boardCopy := g.board.Copy()
 
 		// 3. Simule o movimento na cópia
-		_ = boardCopy.MovePiece(fromX, fromY, move.X, move.Y) // Ignore o erro pois o move é válido
+		moveErr := boardCopy.MovePiece(fromX, fromY, move.X, move.Y)
+		if moveErr != nil {
+			continue
+		}
 
 		// 4. Encontre a nova posição do rei
 		kingX, kingY := boardCopy.GetKingPosition(g.currentTurn)
 
 		// 5. Verifique se o rei está em xeque na cópia do tabuleiro
-		if !boardCopy.IsSquareAttacked(kingX, kingY, g.getOpponentColor()) {
+		isAttacked := boardCopy.IsSquareAttacked(kingX, kingY, g.getOpponentColor())
+		if !isAttacked {
 			// Se o rei não está em xeque, o movimento é legal
 			legalMoves = append(legalMoves, move)
 		}

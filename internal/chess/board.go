@@ -22,6 +22,7 @@ type IBoard interface {
 	IsSquareAttacked(x, y int, byColor Color) bool
 
 	AddPiece(piece IPiece, x, y int) error
+	SetPiece(piece IPiece, x, y int) error
 	RemovePiece(x, y int) error
 	Copy() IBoard
 }
@@ -182,9 +183,7 @@ func (b *Board) GetPiece(x, y int) (IPiece, error) {
 	if err != nil {
 		return nil, err
 	}
-	if b.board[x][y] == nil {
-		return nil, nil
-	}
+	// Return the piece (can be nil) with no error - this is correct behavior
 	return b.board[x][y], nil
 }
 
@@ -199,6 +198,16 @@ func (b *Board) AddPiece(piece IPiece, x, y int) error {
 	}
 
 	b.board[x][y] = piece
+	return nil
+}
+
+func (b *Board) SetPiece(piece IPiece, x, y int) error {
+	err := b.IsValidCoordinates(x, y)
+	if err != nil {
+		return err
+	}
+
+	b.board[x][y] = piece // Force placement regardless of existing piece
 	return nil
 }
 
