@@ -17,9 +17,9 @@ type IBoard interface {
 
 	IsValidCoordinates(x, y int) error
 
-	GetKingPosition(color Color) (int, int)
-	SetKingPosition(color Color, x, y int)
-	IsSquareAttacked(x, y int, byColor Color) bool
+	GetKingPosition(color common.Color) (int, int)
+	SetKingPosition(color common.Color, x, y int)
+	IsSquareAttacked(x, y int, byColor common.Color) bool
 
 	AddPiece(piece IPiece, x, y int) error
 	SetPiece(piece IPiece, x, y int) error
@@ -27,21 +27,21 @@ type IBoard interface {
 	Copy() IBoard
 
 	// Castling rights validation
-	HasCastlingRights(color Color) bool
-	CanCastleKingSide(color Color) bool
-	CanCastleQueenSide(color Color) bool
+	HasCastlingRights(color common.Color) bool
+	CanCastleKingSide(color common.Color) bool
+	CanCastleQueenSide(color common.Color) bool
 }
 
 type Board struct {
 	board   [8][8]IPiece
-	kingPos map[Color]Position
+	kingPos map[common.Color]Position
 }
 
-func (b *Board) SetKingPosition(color Color, x, y int) {
+func (b *Board) SetKingPosition(color common.Color, x, y int) {
 	b.kingPos[color] = Position{X: x, Y: y}
 }
 
-func (b *Board) GetKingPosition(color Color) (int, int) {
+func (b *Board) GetKingPosition(color common.Color) (int, int) {
 	return b.kingPos[color].X, b.kingPos[color].Y
 }
 
@@ -58,7 +58,7 @@ func (b *Board) GetKingPosition(color Color) (int, int) {
 // Returns:
 //
 //	bool - True if the square is attacked by any piece of the specified color, false otherwise.
-func (b *Board) IsSquareAttacked(x, y int, byColor Color) bool {
+func (b *Board) IsSquareAttacked(x, y int, byColor common.Color) bool {
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
 			piece, _ := b.GetPiece(i, j)
@@ -120,13 +120,13 @@ func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 
 // HasCastlingRights checks if the given color has any castling rights remaining.
 // Returns true if either king-side or queen-side castling is possible.
-func (b *Board) HasCastlingRights(color Color) bool {
+func (b *Board) HasCastlingRights(color common.Color) bool {
 	return b.CanCastleKingSide(color) || b.CanCastleQueenSide(color)
 }
 
 // CanCastleKingSide checks if king-side castling (O-O) is possible for the given color.
 // Requirements: King and king-side rook must not have moved from their initial positions.
-func (b *Board) CanCastleKingSide(color Color) bool {
+func (b *Board) CanCastleKingSide(color common.Color) bool {
 	// Get king position
 	kingX, kingY := b.GetKingPosition(color)
 	king, err := b.GetPiece(kingX, kingY)
@@ -141,7 +141,7 @@ func (b *Board) CanCastleKingSide(color Color) bool {
 
 	// Determine rook position based on color
 	var rookX, rookY int
-	if color == White {
+	if color == common.White {
 		rookX, rookY = 7, 7 // h1
 	} else {
 		rookX, rookY = 7, 0 // h8
@@ -162,7 +162,7 @@ func (b *Board) CanCastleKingSide(color Color) bool {
 
 // CanCastleQueenSide checks if queen-side castling (O-O-O) is possible for the given color.
 // Requirements: King and queen-side rook must not have moved from their initial positions.
-func (b *Board) CanCastleQueenSide(color Color) bool {
+func (b *Board) CanCastleQueenSide(color common.Color) bool {
 	// Get king position
 	kingX, kingY := b.GetKingPosition(color)
 	king, err := b.GetPiece(kingX, kingY)
@@ -177,7 +177,7 @@ func (b *Board) CanCastleQueenSide(color Color) bool {
 
 	// Determine rook position based on color
 	var rookX, rookY int
-	if color == White {
+	if color == common.White {
 		rookX, rookY = 0, 7 // a1
 	} else {
 		rookX, rookY = 0, 0 // a8
@@ -200,40 +200,40 @@ func NewInitialBoard() IBoard {
 	// Setup initial positions for all pieces
 	initialBoard := &Board{
 		board:   [8][8]IPiece{},
-		kingPos: make(map[Color]Position),
+		kingPos: make(map[common.Color]Position),
 	}
 	// Pawn setup
 	for i := 0; i < 8; i++ {
-		initialBoard.board[i][6] = NewPawn(White)
-		initialBoard.board[i][1] = NewPawn(Black)
+		initialBoard.board[i][6] = NewPawn(common.White)
+		initialBoard.board[i][1] = NewPawn(common.Black)
 	}
 	// Rook setup
-	initialBoard.board[0][7] = NewRook(White)
-	initialBoard.board[7][7] = NewRook(White)
-	initialBoard.board[0][0] = NewRook(Black)
-	initialBoard.board[7][0] = NewRook(Black)
+	initialBoard.board[0][7] = NewRook(common.White)
+	initialBoard.board[7][7] = NewRook(common.White)
+	initialBoard.board[0][0] = NewRook(common.Black)
+	initialBoard.board[7][0] = NewRook(common.Black)
 
 	// Knight setup
-	initialBoard.board[1][7] = NewKnight(White)
-	initialBoard.board[6][7] = NewKnight(White)
-	initialBoard.board[1][0] = NewKnight(Black)
-	initialBoard.board[6][0] = NewKnight(Black)
+	initialBoard.board[1][7] = NewKnight(common.White)
+	initialBoard.board[6][7] = NewKnight(common.White)
+	initialBoard.board[1][0] = NewKnight(common.Black)
+	initialBoard.board[6][0] = NewKnight(common.Black)
 
 	// Bishop setup
-	initialBoard.board[2][7] = NewBishop(White)
-	initialBoard.board[5][7] = NewBishop(White)
-	initialBoard.board[2][0] = NewBishop(Black)
-	initialBoard.board[5][0] = NewBishop(Black)
+	initialBoard.board[2][7] = NewBishop(common.White)
+	initialBoard.board[5][7] = NewBishop(common.White)
+	initialBoard.board[2][0] = NewBishop(common.Black)
+	initialBoard.board[5][0] = NewBishop(common.Black)
 
 	// Queen setup
-	initialBoard.board[3][7] = NewQueen(White)
-	initialBoard.board[3][0] = NewQueen(Black)
+	initialBoard.board[3][7] = NewQueen(common.White)
+	initialBoard.board[3][0] = NewQueen(common.Black)
 
 	// King setup
-	initialBoard.board[4][7] = NewKing(White)
-	initialBoard.board[4][0] = NewKing(Black)
-	initialBoard.kingPos[White] = Position{X: 4, Y: 7}
-	initialBoard.kingPos[Black] = Position{X: 4, Y: 0}
+	initialBoard.board[4][7] = NewKing(common.White)
+	initialBoard.board[4][0] = NewKing(common.Black)
+	initialBoard.kingPos[common.White] = Position{X: 4, Y: 7}
+	initialBoard.kingPos[common.Black] = Position{X: 4, Y: 0}
 
 	// Place pieces on the board
 	return initialBoard
@@ -252,12 +252,12 @@ func NewBoard(board *[8][8]IPiece) IBoard {
 	if board == nil {
 		return &Board{
 			board:   [8][8]IPiece{},
-			kingPos: make(map[Color]Position),
+			kingPos: make(map[common.Color]Position),
 		}
 	}
 	return &Board{
 		board:   *board,
-		kingPos: make(map[Color]Position),
+		kingPos: make(map[common.Color]Position),
 	}
 }
 
@@ -305,7 +305,7 @@ func (b *Board) IsValidCoordinates(x, y int) error {
 func (b *Board) Copy() IBoard {
 	newBoard := &Board{
 		board:   [8][8]IPiece{},
-		kingPos: make(map[Color]Position),
+		kingPos: make(map[common.Color]Position),
 	}
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {

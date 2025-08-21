@@ -3,6 +3,7 @@ package chess
 
 import (
 	"errors"
+	common "idylicaro/go-chess/internal/common"
 	"testing"
 	// Verifique o caminho real do seu pacote common
 )
@@ -19,27 +20,27 @@ func TestBoard_AddPiece(t *testing.T) {
 		{
 			name:         "Add pawn to empty square",
 			initialBoard: NewBoard(nil).(*Board),
-			pieceToAdd:   NewPawn(White),
+			pieceToAdd:   NewPawn(common.White),
 			x:            0, y: 0,
 			expectedErr: nil,
-			expectPiece: NewPawn(White),
+			expectPiece: NewPawn(common.White),
 		},
 		{
 			name: "Add rook to occupied square",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(White), 0, 0)
+				b.AddPiece(NewPawn(common.White), 0, 0)
 				return b.(*Board)
 			}(),
-			pieceToAdd: NewRook(Black),
+			pieceToAdd: NewRook(common.Black),
 			x:          0, y: 0,
 			expectedErr: errors.New("there is already a piece"),
-			expectPiece: NewPawn(White), // Should still be the pawn
+			expectPiece: NewPawn(common.White), // Should still be the pawn
 		},
 		{
 			name:         "Add piece to invalid coordinates",
 			initialBoard: NewBoard(nil).(*Board),
-			pieceToAdd:   NewKing(White),
+			pieceToAdd:   NewKing(common.White),
 			x:            -1, y: 0,
 			expectedErr: errors.New("invalid coordinates"),
 			expectPiece: nil,
@@ -86,7 +87,7 @@ func TestBoard_RemovePiece(t *testing.T) {
 			name: "Remove pawn from occupied square",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(White), 0, 0)
+				b.AddPiece(NewPawn(common.White), 0, 0)
 				return b.(*Board)
 			}(),
 			x: 0, y: 0,
@@ -135,91 +136,91 @@ func TestBoard_MovePiece(t *testing.T) {
 		toX, toY         int
 		expectedErr      error
 		expectedHasMoved map[string]bool // map[pieceType_color]hasMoved
-		expectedKingPos  map[Color]Position
+		expectedKingPos  map[common.Color]Position
 	}{
 		{
 			name: "Move Pawn to empty square",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(White), 0, 6)
-				b.SetKingPosition(White, 4, 7) // Set king pos
-				b.SetKingPosition(Black, 4, 0)
+				b.AddPiece(NewPawn(common.White), 0, 6)
+				b.SetKingPosition(common.White, 4, 7) // Set king pos
+				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 6, toX: 0, toY: 5,
 			expectedErr:      nil,
 			expectedHasMoved: map[string]bool{"Pawn_White": true},
-			expectedKingPos: map[Color]Position{
-				White: {X: 4, Y: 7},
-				Black: {X: 4, Y: 0},
+			expectedKingPos: map[common.Color]Position{
+				common.White: {X: 4, Y: 7},
+				common.Black: {X: 4, Y: 0},
 			},
 		},
 		{
 			name: "Move Rook to capture opponent",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewRook(White), 0, 7)
-				b.AddPiece(NewPawn(Black), 0, 5)
-				b.SetKingPosition(White, 4, 7) // Set king pos
-				b.SetKingPosition(Black, 4, 0)
+				b.AddPiece(NewRook(common.White), 0, 7)
+				b.AddPiece(NewPawn(common.Black), 0, 5)
+				b.SetKingPosition(common.White, 4, 7) // Set king pos
+				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 7, toX: 0, toY: 5,
 			expectedErr:      nil,
 			expectedHasMoved: map[string]bool{"Rook_White": true},
-			expectedKingPos: map[Color]Position{
-				White: {X: 4, Y: 7},
-				Black: {X: 4, Y: 0},
+			expectedKingPos: map[common.Color]Position{
+				common.White: {X: 4, Y: 7},
+				common.Black: {X: 4, Y: 0},
 			},
 		},
 		{
 			name: "Move King and update KingPosition",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewKing(White), 4, 7)
-				b.SetKingPosition(White, 4, 7) // Initial king pos
-				b.SetKingPosition(Black, 4, 0)
+				b.AddPiece(NewKing(common.White), 4, 7)
+				b.SetKingPosition(common.White, 4, 7) // Initial king pos
+				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
 			}(),
 			fromX: 4, fromY: 7, toX: 4, toY: 6,
 			expectedErr:      nil,
 			expectedHasMoved: map[string]bool{"King_White": true},
-			expectedKingPos: map[Color]Position{
-				White: {X: 4, Y: 6}, // King position should be updated
-				Black: {X: 4, Y: 0},
+			expectedKingPos: map[common.Color]Position{
+				common.White: {X: 4, Y: 6}, // King position should be updated
+				common.Black: {X: 4, Y: 0},
 			},
 		},
 		{
 			name: "Move from empty square",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.SetKingPosition(White, 4, 7)
-				b.SetKingPosition(Black, 4, 0)
+				b.SetKingPosition(common.White, 4, 7)
+				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 0, toX: 0, toY: 1,
 			expectedErr:      errors.New("could not get piece from (0, 0): no piece found at coordinates"), // Customize if your GetPiece returns 'no piece found' error
 			expectedHasMoved: nil,
-			expectedKingPos: map[Color]Position{
-				White: {X: 4, Y: 7},
-				Black: {X: 4, Y: 0},
+			expectedKingPos: map[common.Color]Position{
+				common.White: {X: 4, Y: 7},
+				common.Black: {X: 4, Y: 0},
 			},
 		},
 		{
 			name: "Move to invalid coordinates",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(White), 0, 6)
-				b.SetKingPosition(White, 4, 7)
-				b.SetKingPosition(Black, 4, 0)
+				b.AddPiece(NewPawn(common.White), 0, 6)
+				b.SetKingPosition(common.White, 4, 7)
+				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 6, toX: 0, toY: 8, // Invalid Y coordinate
 			expectedErr:      errors.New("invalid coordinates"),
 			expectedHasMoved: nil,
-			expectedKingPos: map[Color]Position{
-				White: {X: 4, Y: 7},
-				Black: {X: 4, Y: 0},
+			expectedKingPos: map[common.Color]Position{
+				common.White: {X: 4, Y: 7},
+				common.Black: {X: 4, Y: 0},
 			},
 		},
 	}

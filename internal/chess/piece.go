@@ -5,7 +5,7 @@ import (
 )
 
 type IPiece interface {
-	GetColor() Color
+	GetColor() common.Color
 	GetType() common.PieceType
 	GetValidMoves(fromX, fromY int, board IBoard) []Position
 	Copy() IPiece
@@ -13,10 +13,10 @@ type IPiece interface {
 
 type Piece struct {
 	Type  common.PieceType
-	Color Color
+	Color common.Color
 }
 
-func (p *Piece) GetColor() Color {
+func (p *Piece) GetColor() common.Color {
 	return p.Color
 }
 
@@ -29,7 +29,7 @@ type Pawn struct {
 	hasMoved bool
 }
 
-func NewPawn(color Color) *Pawn {
+func NewPawn(color common.Color) *Pawn {
 	return &Pawn{
 		Piece: Piece{
 			Type:  common.Pawn,
@@ -59,7 +59,7 @@ func (p *Pawn) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPass
 	validMoves := []Position{}
 	var direction int
 
-	if p.Color == White {
+	if p.Color == common.White {
 		direction = -1
 	} else {
 		direction = 1
@@ -97,7 +97,7 @@ func (p *Pawn) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPass
 
 	if enPassantTarget != nil {
 		// Check if the pawn is on the correct rank (rank 4 for white, rank 5 for black)
-		if (p.Color == White && fromY == 3) || (p.Color == Black && fromY == 4) {
+		if (p.Color == common.White && fromY == 3) || (p.Color == common.Black && fromY == 4) {
 			// Diagonal attack position to the left
 			if leftAttackX == enPassantTarget.X && attackY == enPassantTarget.Y {
 				// Verify there's actually an enemy pawn to capture via en passant
@@ -131,7 +131,7 @@ type Knight struct {
 	Piece
 }
 
-func NewKnight(color Color) *Knight {
+func NewKnight(color common.Color) *Knight {
 	return &Knight{
 		Piece: Piece{
 			Type:  common.Knight,
@@ -174,7 +174,7 @@ type Bishop struct {
 	Piece
 }
 
-func NewBishop(color Color) *Bishop {
+func NewBishop(color common.Color) *Bishop {
 	return &Bishop{
 		Piece: Piece{
 			Type:  common.Bishop,
@@ -236,7 +236,7 @@ type Rook struct {
 	hasMoved bool
 }
 
-func NewRook(color Color) *Rook {
+func NewRook(color common.Color) *Rook {
 	return &Rook{
 		Piece: Piece{
 			Type:  common.Rook,
@@ -302,7 +302,7 @@ type Queen struct {
 	Piece
 }
 
-func NewQueen(color Color) *Queen {
+func NewQueen(color common.Color) *Queen {
 	return &Queen{
 		Piece: Piece{
 			Type:  common.Queen,
@@ -367,7 +367,7 @@ type King struct {
 	hasMoved bool
 }
 
-func NewKing(color Color) *King {
+func NewKing(color common.Color) *King {
 	return &King{
 		Piece: Piece{
 			Type:  common.King,
@@ -422,7 +422,7 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 
 	// Castling check
 	if !k.hasMoved {
-		if k.GetColor() == White {
+		if k.GetColor() == common.White {
 			// Left castling
 			if piece, _ := board.GetPiece(0, 7); piece != nil && piece.GetType() == common.Rook {
 				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {

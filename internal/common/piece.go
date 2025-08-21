@@ -29,3 +29,21 @@ func (pt PieceType) String() string {
 		return "Unknown"
 	}
 }
+
+type Color int
+
+const (
+	White Color = iota
+	Black
+)
+
+func (c Color) String() string {
+	switch c {
+	case White:
+		return "White"
+	case Black:
+		return "Black"
+	default:
+		return "Unknown"
+	}
+}

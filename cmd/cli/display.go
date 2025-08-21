@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"idylicaro/go-chess/internal/chess"
 	common "idylicaro/go-chess/internal/common"
+	"time"
 )
 
 func DisplayBoard(b chess.IBoard, validMoves []chess.Position) {
@@ -36,7 +37,7 @@ func DisplayBoard(b chess.IBoard, validMoves []chess.Position) {
 
 func DisplayGameState(game *chess.Game) {
 	var turn, state string
-	if game.GetCurrentTurn() == chess.White {
+	if game.GetCurrentTurn() == common.White {
 		turn = "White"
 	} else {
 		turn = "Black"
@@ -53,44 +54,72 @@ func DisplayGameState(game *chess.Game) {
 		state = "Stalemate"
 	case chess.Draw:
 		state = "Draw"
+	case chess.TimeoutWhite:
+		state = "Timeout - Black Wins"
+	case chess.TimeoutBlack:
+		state = "Timeout - White Wins"
 	}
 
 	fmt.Printf("\n--- Current State: %s | Turn: %s ---\n", state, turn)
+
+	// Display timer information if available
+	if game.HasTimer() {
+		whiteTime, err1 := game.GetRemainingTime(common.White)
+		blackTime, err2 := game.GetRemainingTime(common.Black)
+
+		if err1 == nil && err2 == nil {
+			fmt.Printf("⏰ White: %v | Black: %v\n",
+				formatDuration(whiteTime),
+				formatDuration(blackTime))
+		}
+	}
 }
 
 // getPieceChar converts a piece to its character representation
 func getPieceChar(piece chess.IPiece) string {
 	switch piece.GetType() {
 	case common.Pawn:
-		if piece.GetColor() == chess.White {
+		if piece.GetColor() == common.White {
 			return "P"
 		}
 		return "p"
 	case common.Rook:
-		if piece.GetColor() == chess.White {
+		if piece.GetColor() == common.White {
 			return "R"
 		}
 		return "r"
 	case common.Knight:
-		if piece.GetColor() == chess.White {
+		if piece.GetColor() == common.White {
 			return "N"
 		}
 		return "n"
 	case common.Bishop:
-		if piece.GetColor() == chess.White {
+		if piece.GetColor() == common.White {
 			return "B"
 		}
 		return "b"
 	case common.Queen:
-		if piece.GetColor() == chess.White {
+		if piece.GetColor() == common.White {
 			return "Q"
 		}
 		return "q"
 	case common.King:
-		if piece.GetColor() == chess.White {
+		if piece.GetColor() == common.White {
 			return "K"
 		}
 		return "k"
 	}
 	return " "
+}
+
+// formatDuration formats a time.Duration into a human-readable string
+func formatDuration(d time.Duration) string {
+	if d < 0 {
+		return "00:00"
+	}
+
+	minutes := int(d.Minutes())
+	seconds := int(d.Seconds()) % 60
+
+	return fmt.Sprintf("%02d:%02d", minutes, seconds)
 }

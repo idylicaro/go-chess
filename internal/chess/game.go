@@ -3,26 +3,22 @@ package chess
 import (
 	"fmt"
 	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/timer"
 	"idylicaro/go-chess/internal/uci"
+	"time"
 )
 
 type Game struct {
 	board           IBoard
-	currentTurn     Color
+	currentTurn     common.Color
 	state           GameState
 	enPassantTarget *Position
-	halfMoveClock   int            // For fifty-move rule
-	positionHistory map[string]int // For threefold repetition
-	moveHistory     []uci.Move     // For move history tracking
+	halfMoveClock   int              // For fifty-move rule
+	positionHistory map[string]int   // For threefold repetition
+	moveHistory     []uci.Move       // For move history tracking
+	gameTimer       *timer.GameTimer // Timer control
 	//TODO: Draw Reason
 }
-
-type Color int
-
-const (
-	White Color = iota
-	Black
-)
 
 type GameState int
 
@@ -32,18 +28,40 @@ const (
 	Checkmate
 	Stalemate
 	Draw
+	TimeoutWhite
+	TimeoutBlack
 )
 
 func NewGame() *Game {
 	return &Game{
 		board:           NewInitialBoard(),
-		currentTurn:     White,
+		currentTurn:     common.White,
 		state:           InProgress,
 		enPassantTarget: nil,
+		gameTimer:       nil, // No timer by default
 	}
 }
 
-func (g *Game) GetCurrentTurn() Color {
+func NewGameWithTimer(timeConfig timer.TimeConfig) *Game {
+	gameTimer := timer.NewGameTimer(timeConfig)
+
+	// Set timeout callback
+	gameTimer.SetTimeoutCallback(func(color common.Color) {
+		fmt.Printf("Timeout for %v player!", color)
+		// This will be called when timeout occurs
+		// We'll handle it in the Move method
+	})
+
+	return &Game{
+		board:           NewInitialBoard(),
+		currentTurn:     common.White,
+		state:           InProgress,
+		enPassantTarget: nil,
+		gameTimer:       gameTimer,
+	}
+}
+
+func (g *Game) GetCurrentTurn() common.Color {
 	return g.currentTurn
 }
 
@@ -53,6 +71,42 @@ func (g *Game) GetState() GameState {
 
 func (g *Game) GetBoard() IBoard {
 	return g.board
+}
+
+// Timer related methods
+func (g *Game) StartTimer() error {
+	if g.gameTimer == nil {
+		return fmt.Errorf("no timer configured for this game")
+	}
+	g.gameTimer.Start(g.currentTurn)
+	return nil
+}
+
+func (g *Game) GetRemainingTime(color common.Color) (time.Duration, error) {
+	if g.gameTimer == nil {
+		return 0, fmt.Errorf("no timer configured for this game")
+	}
+	return g.gameTimer.GetRemainingTime(color), nil
+}
+
+func (g *Game) PauseTimer() error {
+	if g.gameTimer == nil {
+		return fmt.Errorf("no timer configured for this game")
+	}
+	g.gameTimer.Pause()
+	return nil
+}
+
+func (g *Game) ResumeTimer() error {
+	if g.gameTimer == nil {
+		return fmt.Errorf("no timer configured for this game")
+	}
+	g.gameTimer.Resume()
+	return nil
+}
+
+func (g *Game) HasTimer() bool {
+	return g.gameTimer != nil
 }
 
 func (g *Game) Move(move uci.Move) error {
@@ -111,7 +165,7 @@ func (g *Game) Move(move uci.Move) error {
 
 		// Calculate the position of the captured pawn
 		var capturedPawnY int
-		if pieceToMove.GetColor() == White {
+		if pieceToMove.GetColor() == common.White {
 			capturedPawnY = move.ToY + 1
 		} else {
 			capturedPawnY = move.ToY - 1
@@ -122,8 +176,8 @@ func (g *Game) Move(move uci.Move) error {
 
 	isPromotion := false
 	if pieceToMove.GetType() == common.Pawn {
-		if (pieceToMove.GetColor() == White && move.ToY == 0) ||
-			(pieceToMove.GetColor() == Black && move.ToY == 7) {
+		if (pieceToMove.GetColor() == common.White && move.ToY == 0) ||
+			(pieceToMove.GetColor() == common.Black && move.ToY == 7) {
 			isPromotion = true
 		}
 	}
@@ -160,7 +214,7 @@ func (g *Game) Move(move uci.Move) error {
 	// En passant Check
 	if pieceToMove.GetType() == common.Pawn {
 		deltaY := move.ToY - move.FromY
-		if (pieceToMove.GetColor() == White && deltaY == -2) || (pieceToMove.GetColor() == Black && deltaY == 2) {
+		if (pieceToMove.GetColor() == common.White && deltaY == -2) || (pieceToMove.GetColor() == common.Black && deltaY == 2) {
 			targetY := move.FromY + deltaY/2
 			g.enPassantTarget = &Position{X: move.ToX, Y: targetY}
 		}
@@ -168,7 +222,24 @@ func (g *Game) Move(move uci.Move) error {
 
 	g.moveHistory = append(g.moveHistory, move)
 
+	// Switch turn
 	g.currentTurn = g.getOpponentColor()
+
+	// Handle timer if present
+	if g.gameTimer != nil {
+		// Check for timeout before switching
+		if g.gameTimer.IsTimeout(g.getOpponentColor()) {
+			if g.getOpponentColor() == common.White {
+				g.state = TimeoutWhite
+			} else {
+				g.state = TimeoutBlack
+			}
+			return fmt.Errorf("game over - timeout")
+		}
+
+		// Switch timer to current player
+		g.gameTimer.SwitchPlayer(g.currentTurn)
+	}
 
 	g.updateGameState()
 
@@ -217,15 +288,15 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 	return legalMoves, nil
 }
 
-func (g *Game) getOpponentColor() Color {
-	if g.currentTurn == White {
-		return Black
+func (g *Game) getOpponentColor() common.Color {
+	if g.currentTurn == common.White {
+		return common.Black
 	}
-	return White
+	return common.White
 }
 
 // getAllLegalMoves returns a slice of all legal move positions for the given color.
-func (g *Game) getAllLegalMoves(color Color) []Position {
+func (g *Game) getAllLegalMoves(color common.Color) []Position {
 	var allMoves []Position
 	for x := 0; x < 8; x++ {
 		for y := 0; y < 8; y++ {
@@ -240,6 +311,18 @@ func (g *Game) getAllLegalMoves(color Color) []Position {
 }
 
 func (g *Game) updateGameState() {
+	// Check for timeout first
+	if g.gameTimer != nil {
+		if g.gameTimer.IsTimeout(common.White) {
+			g.state = TimeoutWhite
+			return
+		}
+		if g.gameTimer.IsTimeout(common.Black) {
+			g.state = TimeoutBlack
+			return
+		}
+	}
+
 	allLegalMoves := g.getAllLegalMoves(g.currentTurn)
 
 	kingX, kingY := g.board.GetKingPosition(g.currentTurn)
@@ -311,13 +394,13 @@ func (g *Game) generatePositionHash() string {
 		hash += fmt.Sprintf("ep:%d%d", g.enPassantTarget.X, g.enPassantTarget.Y)
 	}
 
-	hash += fmt.Sprintf("castle:%t%t", g.board.HasCastlingRights(White), g.board.HasCastlingRights(Black))
+	hash += fmt.Sprintf("castle:%t%t", g.board.HasCastlingRights(common.White), g.board.HasCastlingRights(common.Black))
 	return hash
 }
 
 func (g *Game) isInsufficientMaterial() bool {
 	pieces := make(map[common.PieceType]int)
-	bishops := make(map[Color][]Position) // Para rastrear cor dos bispos
+	bishops := make(map[common.Color][]Position) // Para rastrear cor dos bispos
 
 	// Contar peças
 	for x := 0; x < 8; x++ {
@@ -353,21 +436,10 @@ func (g *Game) isInsufficientMaterial() bool {
 	// King and Bishop vs King and Bishop (Bishop into a diff color squares)
 	if totalPieces == 2 && pieces[common.Bishop] == 2 {
 		// Check if the bishops are on opposite colored squares
-		if (bishops[White][0].X+bishops[White][0].Y)%2 != (bishops[Black][0].X+bishops[Black][0].Y)%2 {
+		if (bishops[common.White][0].X+bishops[common.White][0].Y)%2 != (bishops[common.Black][0].X+bishops[common.Black][0].Y)%2 {
 			return true
 		}
 	}
 
 	return false
-}
-
-func (c Color) String() string {
-	switch c {
-	case White:
-		return "White"
-	case Black:
-		return "Black"
-	default:
-		return "Unknown"
-	}
 }
