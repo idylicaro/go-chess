@@ -11,7 +11,10 @@ type Game struct {
 	currentTurn     Color
 	state           GameState
 	enPassantTarget *Position
-	moveHistory     []uci.Move
+	halfMoveClock   int            // For fifty-move rule
+	positionHistory map[string]int // For threefold repetition
+	moveHistory     []uci.Move     // For move history tracking
+	//TODO: Draw Reason
 }
 
 type Color int
@@ -75,6 +78,13 @@ func (g *Game) Move(move uci.Move) error {
 		return fmt.Errorf("illegal move: king would be in check or move is not valid")
 	}
 
+	targetPiece, _ := g.board.GetPiece(move.ToX, move.ToY)
+	if targetPiece != nil || pieceToMove.GetType() == common.Pawn {
+		g.halfMoveClock = 0
+	} else {
+		g.halfMoveClock++
+	}
+
 	if pieceToMove.GetType() == common.King {
 		isCastling := (move.ToX == move.FromX+2 || move.ToX == move.FromX-2)
 		if isCastling {
@@ -100,7 +110,7 @@ func (g *Game) Move(move uci.Move) error {
 		move.ToX == g.enPassantTarget.X && move.ToY == g.enPassantTarget.Y {
 
 		// Calculate the position of the captured pawn
-		capturedPawnY := move.FromY
+		var capturedPawnY int
 		if pieceToMove.GetColor() == White {
 			capturedPawnY = move.ToY + 1
 		} else {
@@ -248,6 +258,107 @@ func (g *Game) updateGameState() {
 			g.state = InProgress
 		}
 	}
+	if g.isDraw() {
+		g.state = Draw
+	}
+}
+
+func (g *Game) isDraw() bool {
+	if g.halfMoveClock >= 50 {
+		return true
+	}
+	if g.isThreefoldRepetition() {
+		return true
+	}
+	if g.isInsufficientMaterial() {
+		return true
+	}
+	return false
+}
+
+func (g *Game) isThreefoldRepetition() bool {
+	// Gerar hash da posição atual
+	currentHash := g.generatePositionHash()
+
+	// Inicializar o mapa se não existir
+	if g.positionHistory == nil {
+		g.positionHistory = make(map[string]int)
+	}
+
+	// Incrementar o contador para a posição atual
+	g.positionHistory[currentHash]++
+
+	// Verificar se a posição se repetiu 3 vezes
+	return g.positionHistory[currentHash] >= 3
+}
+
+func (g *Game) generatePositionHash() string {
+	hash := ""
+
+	// Pieces position
+	for x := 0; x < 8; x++ {
+		for y := 0; y < 8; y++ {
+			piece, _ := g.board.GetPiece(x, y)
+			if piece != nil {
+				hash += fmt.Sprintf("%d%d%s%s", x, y, piece.GetColor(), piece.GetType())
+			}
+		}
+	}
+
+	hash += fmt.Sprintf("turn:%s", g.currentTurn)
+
+	if g.enPassantTarget != nil {
+		hash += fmt.Sprintf("ep:%d%d", g.enPassantTarget.X, g.enPassantTarget.Y)
+	}
+
+	hash += fmt.Sprintf("castle:%t%t", g.board.HasCastlingRights(White), g.board.HasCastlingRights(Black))
+	return hash
+}
+
+func (g *Game) isInsufficientMaterial() bool {
+	pieces := make(map[common.PieceType]int)
+	bishops := make(map[Color][]Position) // Para rastrear cor dos bispos
+
+	// Contar peças
+	for x := 0; x < 8; x++ {
+		for y := 0; y < 8; y++ {
+			piece, _ := g.board.GetPiece(x, y)
+			if piece != nil && piece.GetType() != common.King {
+				pieces[piece.GetType()]++
+				if piece.GetType() == common.Bishop {
+					bishops[piece.GetColor()] = append(bishops[piece.GetColor()], Position{x, y})
+				}
+			}
+		}
+	}
+
+	totalPieces := 0
+	for _, count := range pieces {
+		totalPieces += count
+	}
+
+	// Specific checks
+	// only kings
+	if totalPieces == 0 {
+		return true
+	}
+	// King + Bishop vs King
+	if totalPieces == 1 && pieces[common.Bishop] == 1 {
+		return true
+	}
+	// King + Knight vs King
+	if totalPieces == 1 && pieces[common.Knight] == 1 {
+		return true
+	}
+	// King and Bishop vs King and Bishop (Bishop into a diff color squares)
+	if totalPieces == 2 && pieces[common.Bishop] == 2 {
+		// Check if the bishops are on opposite colored squares
+		if (bishops[White][0].X+bishops[White][0].Y)%2 != (bishops[Black][0].X+bishops[Black][0].Y)%2 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c Color) String() string {

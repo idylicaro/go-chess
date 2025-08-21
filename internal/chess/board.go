@@ -25,6 +25,11 @@ type IBoard interface {
 	SetPiece(piece IPiece, x, y int) error
 	RemovePiece(x, y int) error
 	Copy() IBoard
+
+	// Castling rights validation
+	HasCastlingRights(color Color) bool
+	CanCastleKingSide(color Color) bool
+	CanCastleQueenSide(color Color) bool
 }
 
 type Board struct {
@@ -111,6 +116,84 @@ func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 	}
 
 	return nil
+}
+
+// HasCastlingRights checks if the given color has any castling rights remaining.
+// Returns true if either king-side or queen-side castling is possible.
+func (b *Board) HasCastlingRights(color Color) bool {
+	return b.CanCastleKingSide(color) || b.CanCastleQueenSide(color)
+}
+
+// CanCastleKingSide checks if king-side castling (O-O) is possible for the given color.
+// Requirements: King and king-side rook must not have moved from their initial positions.
+func (b *Board) CanCastleKingSide(color Color) bool {
+	// Get king position
+	kingX, kingY := b.GetKingPosition(color)
+	king, err := b.GetPiece(kingX, kingY)
+	if err != nil || king == nil || king.GetType() != common.King {
+		return false
+	}
+
+	// Check if king has moved
+	if kingPiece, ok := king.(*King); ok && kingPiece.hasMoved {
+		return false
+	}
+
+	// Determine rook position based on color
+	var rookX, rookY int
+	if color == White {
+		rookX, rookY = 7, 7 // h1
+	} else {
+		rookX, rookY = 7, 0 // h8
+	}
+
+	// Check if rook exists and hasn't moved
+	rook, err := b.GetPiece(rookX, rookY)
+	if err != nil || rook == nil || rook.GetType() != common.Rook || rook.GetColor() != color {
+		return false
+	}
+
+	if rookPiece, ok := rook.(*Rook); ok && rookPiece.hasMoved {
+		return false
+	}
+
+	return true
+}
+
+// CanCastleQueenSide checks if queen-side castling (O-O-O) is possible for the given color.
+// Requirements: King and queen-side rook must not have moved from their initial positions.
+func (b *Board) CanCastleQueenSide(color Color) bool {
+	// Get king position
+	kingX, kingY := b.GetKingPosition(color)
+	king, err := b.GetPiece(kingX, kingY)
+	if err != nil || king == nil || king.GetType() != common.King {
+		return false
+	}
+
+	// Check if king has moved
+	if kingPiece, ok := king.(*King); ok && kingPiece.hasMoved {
+		return false
+	}
+
+	// Determine rook position based on color
+	var rookX, rookY int
+	if color == White {
+		rookX, rookY = 0, 7 // a1
+	} else {
+		rookX, rookY = 0, 0 // a8
+	}
+
+	// Check if rook exists and hasn't moved
+	rook, err := b.GetPiece(rookX, rookY)
+	if err != nil || rook == nil || rook.GetType() != common.Rook || rook.GetColor() != color {
+		return false
+	}
+
+	if rookPiece, ok := rook.(*Rook); ok && rookPiece.hasMoved {
+		return false
+	}
+
+	return true
 }
 
 func NewInitialBoard() IBoard {
