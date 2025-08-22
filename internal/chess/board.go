@@ -319,3 +319,65 @@ func (b *Board) Copy() IBoard {
 	}
 	return newBoard
 }
+
+// FormatForDebug implements debug.BoardFormatter interface
+func (b *Board) FormatForDebug() string {
+	pieces := make([][]string, 8)
+	for i := range pieces {
+		pieces[i] = make([]string, 8)
+	}
+
+	// Unicode chess symbols
+	symbols := map[string]string{
+		"WhitePawn": "♙", "BlackPawn": "♟",
+		"WhiteRook": "♖", "BlackRook": "♜",
+		"WhiteKnight": "♘", "BlackKnight": "♞",
+		"WhiteBishop": "♗", "BlackBishop": "♝",
+		"WhiteQueen": "♕", "BlackQueen": "♛",
+		"WhiteKing": "♔", "BlackKing": "♚",
+	}
+
+	for y := 0; y < 8; y++ {
+		for x := 0; x < 8; x++ {
+			piece, err := b.GetPiece(x, y)
+			if err != nil || piece == nil {
+				pieces[y][x] = ""
+			} else {
+				color := "White"
+				if piece.GetColor().String() == "Black" {
+					color = "Black"
+				}
+				key := color + piece.GetType().String()
+				if symbol, exists := symbols[key]; exists {
+					pieces[y][x] = symbol
+				} else {
+					pieces[y][x] = "?"
+				}
+			}
+		}
+	}
+
+	// Use the generic formatter from debug package
+	return formatBoardGeneric(pieces)
+}
+
+// Helper function for board formatting
+func formatBoardGeneric(pieces [][]string) string {
+	var result string
+	result += "  a b c d e f g h\n"
+
+	for y := 0; y < 8; y++ {
+		result += fmt.Sprintf("%d ", 8-y)
+		for x := 0; x < 8; x++ {
+			if pieces[y][x] != "" {
+				result += fmt.Sprintf("%s ", pieces[y][x])
+			} else {
+				result += ". "
+			}
+		}
+		result += fmt.Sprintf(" %d\n", 8-y)
+	}
+	result += "  a b c d e f g h"
+
+	return result
+}

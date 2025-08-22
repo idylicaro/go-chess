@@ -3,6 +3,7 @@ package chess
 import (
 	"fmt"
 	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/debug"
 	"idylicaro/go-chess/internal/timer"
 	"idylicaro/go-chess/internal/uci"
 	"time"
@@ -111,11 +112,11 @@ func (g *Game) HasTimer() bool {
 
 func (g *Game) Move(move uci.Move) error {
 	defer func(start time.Time) {
-		Debug.LogTiming("Game.Move", start)
+		debug.LogTiming("Game.Move", start)
 	}(time.Now())
 
 	moveStr := fmt.Sprintf("(%d,%d)->(%d,%d)", move.FromX, move.FromY, move.ToX, move.ToY)
-	Debug.LogMove(moveStr, g.currentTurn.String(), g.state)
+	debug.NewChessDebugger().LogMove(moveStr, g.currentTurn.String(), g.state)
 
 	pieceToMove, _ := g.board.GetPiece(move.FromX, move.FromY)
 
@@ -250,8 +251,11 @@ func (g *Game) Move(move uci.Move) error {
 
 	g.updateGameState()
 
-	Debug.LogGameState(g)
-	Debug.LogBoard(g.board)
+	debugger := debug.NewChessDebugger()
+	debugger.LogGameState(g)
+	if boardFormatter, ok := g.board.(debug.BoardFormatter); ok {
+		debugger.LogBoard(boardFormatter)
+	}
 
 	return nil
 }
@@ -452,4 +456,47 @@ func (g *Game) isInsufficientMaterial() bool {
 	}
 
 	return false
+}
+
+// GetDebugInfo implements debug.GameStateProvider
+func (g *Game) GetDebugInfo() map[string]interface{} {
+	info := make(map[string]interface{})
+
+	info["Current Turn"] = g.currentTurn.String()
+	info["Game State"] = g.state.String()
+	info["Half Move Clock"] = g.halfMoveClock
+	info["Move History Length"] = len(g.moveHistory)
+
+	if g.enPassantTarget != nil {
+		info["En Passant Target"] = fmt.Sprintf("(%d,%d)", g.enPassantTarget.X, g.enPassantTarget.Y)
+	} else {
+		info["En Passant Target"] = "None"
+	}
+
+	if g.HasTimer() {
+		whiteTime, _ := g.GetRemainingTime(common.White)
+		blackTime, _ := g.GetRemainingTime(common.Black)
+		info["White Time"] = whiteTime.String()
+		info["Black Time"] = blackTime.String()
+	}
+
+	return info
+}
+
+// String methods for debug output
+func (gs GameState) String() string {
+	switch gs {
+	case InProgress:
+		return "InProgress"
+	case Check:
+		return "Check"
+	case Checkmate:
+		return "Checkmate"
+	case Stalemate:
+		return "Stalemate"
+	case Draw:
+		return "Draw"
+	default:
+		return "Unknown"
+	}
 }
