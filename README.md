@@ -100,7 +100,6 @@ The UCI format for a move is a string like "e2e4".
 
 ## TODO
 
-- [ ] Problema: Roque não verifica se o caminho está livre ou se o rei passa por xeque.
 - [ ] Parser para notação algébrica padrão, Geração de notação algébrica para output, Ambiguidade resolution (Nbd2 vs Nfd2).
 - [ ] CLI with charmbracelet/bubbletea.
 
