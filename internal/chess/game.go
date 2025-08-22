@@ -110,6 +110,13 @@ func (g *Game) HasTimer() bool {
 }
 
 func (g *Game) Move(move uci.Move) error {
+	defer func(start time.Time) {
+		Debug.LogTiming("Game.Move", start)
+	}(time.Now())
+
+	moveStr := fmt.Sprintf("(%d,%d)->(%d,%d)", move.FromX, move.FromY, move.ToX, move.ToY)
+	Debug.LogMove(moveStr, g.currentTurn.String(), g.state)
+
 	pieceToMove, _ := g.board.GetPiece(move.FromX, move.FromY)
 
 	if pieceToMove == nil || pieceToMove.GetColor() != g.currentTurn {
@@ -242,6 +249,9 @@ func (g *Game) Move(move uci.Move) error {
 	}
 
 	g.updateGameState()
+
+	Debug.LogGameState(g)
+	Debug.LogBoard(g.board)
 
 	return nil
 }
