@@ -279,6 +279,43 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 
 	var legalMoves []Position
 	for _, move := range possibleMoves {
+		// Special castling validation for King pieces
+		if piece.GetType() == common.King {
+			isCastling := (move.X == fromX+2 || move.X == fromX-2)
+			if isCastling {
+				// Castling rules:
+				// 1. King cannot be in check
+				// 2. King cannot pass through check
+				// 3. King cannot end in check (already validated below)
+
+				kingX, kingY := fromX, fromY
+				opponentColor := g.getOpponentColor()
+
+				if g.board.IsSquareAttacked(kingX, kingY, opponentColor) {
+					continue
+				}
+
+				var passedSquares []Position
+				if move.X > fromX { // Kingside castling
+					passedSquares = []Position{{X: fromX + 1, Y: fromY}, {X: fromX + 2, Y: fromY}}
+				} else { // Queenside castling
+					passedSquares = []Position{{X: fromX - 1, Y: fromY}, {X: fromX - 2, Y: fromY}}
+				}
+
+				canCastle := true
+				for _, square := range passedSquares {
+					if g.board.IsSquareAttacked(square.X, square.Y, opponentColor) {
+						canCastle = false
+						break
+					}
+				}
+
+				if !canCastle {
+					continue
+				}
+			}
+		}
+
 		// 2. Crie uma CÓPIA do tabuleiro para simular o movimento
 		boardCopy := g.board.Copy()
 

@@ -423,7 +423,7 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	// Castling check
 	if !k.hasMoved {
 		if k.GetColor() == common.White {
-			// Left castling
+			// Left castling (queenside)
 			if piece, _ := board.GetPiece(0, 7); piece != nil && piece.GetType() == common.Rook {
 				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
 					p1, _ := board.GetPiece(1, 7)
@@ -434,7 +434,7 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 					}
 				}
 			}
-			// Right castling
+			// Right castling (kingside)
 			if piece, _ := board.GetPiece(7, 7); piece != nil && piece.GetType() == common.Rook {
 				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
 					p5, _ := board.GetPiece(5, 7)
@@ -445,7 +445,7 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 				}
 			}
 		} else {
-			// Left castling
+			// Left castling (queenside)
 			if piece, _ := board.GetPiece(0, 0); piece != nil && piece.GetType() == common.Rook {
 				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
 					p1, _ := board.GetPiece(1, 0)
@@ -456,7 +456,7 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 					}
 				}
 			}
-			// Right castling
+			// Right castling (kingside)
 			if piece, _ := board.GetPiece(7, 0); piece != nil && piece.GetType() == common.Rook {
 				if rook, ok := piece.(*Rook); ok && !rook.hasMoved {
 					p5, _ := board.GetPiece(5, 0)
