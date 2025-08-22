@@ -91,12 +91,13 @@ The UCI format for a move is a string like "e2e4".
 ---
 
 ## TODO
-Promoção não está funcionando corretamente.
-DRAW...
-TIME
+- [ ] Problema: Roque não verifica se o caminho está livre ou se o rei passa por xeque.
+- [ ] Parser para notação algébrica padrão, Geração de notação algébrica para output, Ambiguidade resolution (Nbd2 vs Nfd2).
+- [ ] CLI with charmbracelet/bubbletea.
+
 
 
 ## Game Tests
 To run script to run some scenarios, you need:
-- execute `go build -o ./bin/chess ./cmd/cli/main.go ./cmd/cli/display.go`
+- execute `go build -o bin/chess cmd/cli/*.go`
 - run `go run run_tests.go `
