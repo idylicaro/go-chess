@@ -230,9 +230,6 @@ func (g *Game) Move(move uci.Move) error {
 
 	g.moveHistory = append(g.moveHistory, move)
 
-	// Switch turn
-	g.currentTurn = g.getOpponentColor()
-
 	// Handle timer if present
 	if g.gameTimer != nil {
 		// Check for timeout before switching
@@ -248,6 +245,9 @@ func (g *Game) Move(move uci.Move) error {
 		// Switch timer to current player
 		g.gameTimer.SwitchPlayer(g.currentTurn)
 	}
+
+	// Switch turn
+	g.currentTurn = g.getOpponentColor()
 
 	g.updateGameState()
 
