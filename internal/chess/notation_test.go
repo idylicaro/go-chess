@@ -34,7 +34,6 @@ func TestAlgebraicNotation_ParseMove(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		// TODO: Add more test cases as you implement features
 		// - Captures: "exd5", "Nxf7"
 		// - Check: "Qh5+"
 		// - Checkmate: "Qf7#"
@@ -106,15 +105,6 @@ func TestAlgebraicNotation_GenerateMove(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function to setup specific board positions for testing ambiguity
-func setupAmbiguousPosition() *Game {
-	// TODO: Create a position where two knights can move to the same square
-	// This will help test disambiguation logic
-	game := NewGame()
-	// Example: Place knights on b1 and f1, both can go to d2
-	return game
 }
 
 func TestAlgebraicNotation_Disambiguation(t *testing.T) {
