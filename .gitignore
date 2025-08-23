@@ -24,3 +24,12 @@ go.work.sum
 # OS generated files
 .DS_Store
 Thumbs.db
+
+bin/*
+
+# Reports and benchmark results
+.reports/
+*.prof
+benchmark_results.txt
+performance_report.html
+chess_debug.log

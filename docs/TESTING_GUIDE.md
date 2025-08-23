@@ -1,0 +1,222 @@
+# Testing Guide
+
+This guide covers testing, benchmarking, and debugging for the chess engine.
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all integration tests
+go test -v ./internal/chess -run "Integration"
+
+# Run specific test
+go test -v ./internal/chess -run "TestGameWithTimerIntegration"
+
+# Run with coverage
+go test -v -cover ./internal/chess
+```
+
+The test suite includes:
+- **TestGameIntegration** - Complete game scenarios
+- **TestGameWithTimerIntegration** - Timer functionality 
+- **TestCastlingIntegration** - Castling validation
+- **TestEnPassantIntegration** - En passant validation
+
+## Benchmarking
+
+### Manual Benchmarks
+
+```bash
+# Basic benchmark
+go test -bench=. ./internal/chess
+
+# With memory stats
+go test -bench=. -benchmem ./internal/chess
+
+# Specific benchmark
+go test -bench=BenchmarkMoveGeneration ./internal/chess
+```
+
+### Automated Script
+
+The `scripts/benchmark.sh` script provides comprehensive analysis:
+
+```bash
+# Basic run
+./scripts/benchmark.sh
+
+# With integration tests
+./scripts/benchmark.sh --integration
+
+# Multiple runs for accuracy
+./scripts/benchmark.sh -r 5
+
+# With profiling
+./scripts/benchmark.sh --cpu-profile --mem-profile
+
+# Compare with previous results
+./scripts/benchmark.sh -c old_benchmark.txt
+```
+
+### Available Benchmarks
+
+- **BenchmarkMoveGeneration** - Legal move generation
+- **BenchmarkGameStateUpdate** - Game state updates
+- **BenchmarkFullGame** - Complete game simulation
+- **BenchmarkTimerOperations** - Timer operations
+- **BenchmarkBoardCopy** - Board copying
+- **BenchmarkLegalMoveValidation** - Move validation
+- **BenchmarkEnPassantValidation** - En passant validation
+- **BenchmarkCastlingValidation** - Castling validation
+
+### Reading Results
+
+```
+BenchmarkMoveGeneration-8     100000    10050 ns/op    1024 B/op    15 allocs/op
+```
+
+- **100000**: iterations run
+- **10050 ns/op**: nanoseconds per operation
+- **1024 B/op**: bytes allocated per operation  
+- **15 allocs/op**: allocations per operation
+
+Target performance:
+- Move Generation: under 1ms
+- Game State Update: under 100μs
+- Board Copy: under 50μs
+
+## Debugging
+
+### Environment Variables
+
+```bash
+# Basic debug info
+export CHESS_DEBUG_LEVEL=basic
+export CHESS_DEBUG_FILE=debug.log  # Optional: save to file
+
+# Detailed debugging (includes timings)
+export CHESS_DEBUG_LEVEL=detailed
+
+# Verbose debugging (everything)
+export CHESS_DEBUG_LEVEL=verbose
+
+# Run the game
+go run cmd/cli/*.go
+```
+
+### Programmatic Setup
+
+```go
+package main
+
+import "idylicaro/go-chess/internal/chess"
+
+func main() {
+    // Initialize debug
+    err := chess.InitDebug(chess.DebugDetailed, true, "chess_debug.log")
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // Your code here...
+}
+```
+
+### Debug Levels
+
+- **DebugNone** - No debugging
+- **DebugBasic** - Moves and basic errors
+- **DebugDetailed** - Game state, timings, board
+- **DebugVerbose** - Everything including legal moves
+
+### Debug Output Example
+
+```
+[DEBUG] [INFO] Move: (4,6)->(4,4) by White, Game State: InProgress
+[DEBUG] [DETAIL] Game.Move took 2.345ms
+[DEBUG] [DETAIL] === Game State Debug ===
+[DEBUG] [DETAIL] Current Turn: Black
+[DEBUG] [DETAIL] Game State: InProgress
+[DEBUG] [DETAIL] Half Move Clock: 0
+[DEBUG] [DETAIL] Timer - White: 2m59s, Black: 3m0s, Current: Black
+```
+
+## Performance Analysis
+
+### Regular Monitoring
+
+Run benchmarks regularly to track performance:
+
+```bash
+# Daily benchmarks
+./scripts/benchmark.sh > daily_benchmark_$(date +%Y%m%d).txt
+
+# Compare with baseline
+./scripts/benchmark.sh -c baseline_benchmark.txt
+```
+
+Watch these metrics:
+- Move generation time
+- Memory usage per operation
+- Number of allocations
+
+### Profiling
+
+When you need deeper analysis:
+
+```bash
+# CPU profiling
+./scripts/benchmark.sh --cpu-profile
+go tool pprof .reports/cpu.prof
+
+# Memory profiling  
+./scripts/benchmark.sh --mem-profile
+go tool pprof .reports/mem.prof
+```
+
+### Performance Indicators
+
+**Critical Issues:**
+- Move generation over 10ms
+- Memory leaks
+- Timer drift over 100ms
+
+**Watch Out:**
+- Move generation over 1ms
+- Board copy over 100μs
+- Too many small allocations
+
+**Good Performance:**
+- Move generation under 1ms
+- Stable allocations
+- Timer precision under 10ms
+
+## Development Workflow
+
+### Before Making Changes
+
+```bash
+# 1. Baseline benchmark
+./scripts/benchmark.sh -o baseline/
+
+# 2. Make your changes
+
+# 3. Run tests
+go test ./internal/chess
+
+# 4. Run benchmarks
+./scripts/benchmark.sh --integration -c baseline/benchmark_results.txt
+
+# 5. Check HTML report
+open performance_report.html
+```
+
+### CI/CD Integration
+TODO: add CI workflow
+```bash
+# Add to pipeline
+go test -v ./internal/chess
+./scripts/benchmark.sh --integration -o artifacts/
+```
+

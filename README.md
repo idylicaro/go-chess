@@ -1,4 +1,4 @@
-# Go Chess  
+# Go Chess
 
 ## Directory Overview
 
@@ -13,50 +13,59 @@
 │   │   ├── board.go
 │   │   ├── piece.go
 │   │   ├── game.go
-│   │   └── rules.go
-│   └── uci/
-│       └── protocol.go
+│   ├── uci/
+│   │   └── protocol.go
+│   ├── common/
+│   │   └── piece.go
+├── debug/
+│   ├── debug.go
+│   └── chess.go
+│   └── timer/
+│      └── timer.go
 ├── pkg/
-│   └── game_engine/
-│       └── engine.go
-└── go.mod
+    └── game_engine/
+        └── engine.go
+
 ```
 
 - **cmd/**  
-    Contains the executables for the project. Each subdirectory is a separate program that can be built and run.
+   Contains the executables for the project. Each subdirectory is a separate program that can be built and run.
 
-    - **cmd/server/**  
-        Backend server responsible for managing matches, multiplayer features, and communication with the AI. The entry point is `main.go`.
+  - **cmd/server/**  
+     Backend server responsible for managing matches, multiplayer features, and communication with the AI. The entry point is `main.go`.
 
-    - **cmd/cli/**  
-        Command-line interface for interacting with the chess engine.
+  - **cmd/cli/**  
+     Command-line interface for interacting with the chess engine.
 
 - **internal/**  
-    Core logic of the project, intended for internal use only and not meant to be imported by other projects.
+   Core logic of the project, intended for internal use only and not meant to be imported by other projects.
 
-    - **internal/chess/**  
-        Implements the chess engine logic:
-        - `board.go`: Board representation.
-        - `piece.go`: Piece definitions and properties.
-        - `game.go`: Game state management (turns, check, etc.).
-        - `rules.go`: Movement rules, validation, castling, and more.
+  - **internal/chess/**  
+     Implements the chess engine logic:
 
-    - **internal/uci/**  
-        Handles communication with Stockfish using the UCI protocol.
-        - `protocol.go`: Functions for sending commands and parsing responses.
+    - `board.go`: Board representation.
+    - `piece.go`: Piece definitions and properties.
+    - `game.go`: Game state management (turns, check, etc.).
 
-- **pkg/**  
-    Contains libraries that are safe to use in external projects. If you develop a generic chess engine library for reuse, place it here.
+  - **internal/common/**
+    Handles common utilities and types used across the project.
 
-    - **pkg/game_engine/**  
-        Encapsulates the chess engine logic and provides a public interface. Useful for sharing the engine across multiple projects.
+  - **internal/debug/**  
+    Provides debugging utilities and logging for the chess engine.
 
-- **go.mod**  
-    Go module definition file.
+  - **internal/timer/**  
+    Implements timing and time control features for the chess engine.
 
+  - **internal/uci/**  
+    Handles communication with Stockfish using the UCI protocol.
 
+    - `protocol.go`: Functions for sending commands and parsing responses.
+
+  - **scripts/**  
+    Contains utility scripts for development and testing.
 
 ## UCI Command Processing
+
 The UCI format for a move is a string like "e2e4".
 
 ```
@@ -70,3 +79,33 @@ The UCI format for a move is a string like "e2e4".
     2 [ ][ ][ ][ ][ ][ ][ ][ ]
     1 [ ][ ][ ][ ][ ][ ][ ][ ]
 ```
+
+---
+
+## Internal board Overview
+
+```
+       0 1 2 3 4 5 6 7
+    0 [ ][ ][ ][ ][ ][ ][ ][ ]
+    1 [ ][ ][ ][ ][ ][ ][ ][ ]
+    2 [ ][ ][ ][ ][ ][ ][ ][ ]
+    3 [ ][ ][ ][ ][ ][ ][ ][ ]
+    4 [ ][ ][ ][ ][ ][ ][ ][ ]
+    5 [ ][ ][ ][ ][ ][ ][ ][ ]
+    6 [ ][ ][ ][ ][ ][ ][ ][ ]
+    7 [ ][ ][ ][ ][ ][ ][ ][ ]
+```
+
+---
+
+## TODO
+
+- [ ] Parser para notação algébrica padrão, Geração de notação algébrica para output, Ambiguidade resolution (Nbd2 vs Nfd2).
+- [ ] CLI with charmbracelet/bubbletea.
+
+## How to build
+
+To run script to run some scenarios, you need:
+
+- to build `go build -o bin/chess cmd/cli/*.go`
+- to run `./bin/chess`
