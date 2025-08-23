@@ -230,11 +230,14 @@ func (g *Game) Move(move uci.Move) error {
 
 	g.moveHistory = append(g.moveHistory, move)
 
+	// Switch turn first
+	nextTurn := g.getOpponentColor()
+
 	// Handle timer if present
 	if g.gameTimer != nil {
 		// Check for timeout before switching
-		if g.gameTimer.IsTimeout(g.getOpponentColor()) {
-			if g.getOpponentColor() == common.White {
+		if g.gameTimer.IsTimeout(g.currentTurn) {
+			if g.currentTurn == common.White {
 				g.state = TimeoutWhite
 			} else {
 				g.state = TimeoutBlack
@@ -242,12 +245,12 @@ func (g *Game) Move(move uci.Move) error {
 			return fmt.Errorf("game over - timeout")
 		}
 
-		// Switch timer to current player
-		g.gameTimer.SwitchPlayer(g.currentTurn)
+		// Switch timer to next player
+		g.gameTimer.SwitchPlayer(nextTurn)
 	}
 
-	// Switch turn
-	g.currentTurn = g.getOpponentColor()
+	// Update current turn
+	g.currentTurn = nextTurn
 
 	g.updateGameState()
 
