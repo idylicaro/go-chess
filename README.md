@@ -1,4 +1,5 @@
 # Go Chess
+A chess engine written in Go. Implements board representation, piece logic, and game state management. Communicates with Stockfish via the UCI protocol. Includes both a CLI interface and a backend server for multiplayer support.
 
 ## Directory Overview
 
