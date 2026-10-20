@@ -14,7 +14,9 @@ type Game struct {
 	currentTurn     common.Color
 	state           GameState
 	enPassantTarget *Position
+	castlingRights  CastlingRights   // Castles still available (FEN castling field)
 	halfMoveClock   int              // Plies since the last capture or pawn move, for the fifty-move rule
+	fullMoveNumber  int              // Starts at 1, incremented after each Black move (FEN)
 	positionHistory map[string]int   // For threefold repetition
 	moveHistory     []uci.Move       // For move history tracking
 	gameTimer       *timer.GameTimer // Timer control
@@ -42,6 +44,8 @@ func NewGame() *Game {
 		currentTurn:     common.White,
 		state:           InProgress,
 		enPassantTarget: nil,
+		castlingRights:  AllCastlingRights,
+		fullMoveNumber:  1,
 		gameTimer:       nil, // No timer by default
 	}
 }
@@ -150,6 +154,10 @@ func (g *Game) Move(move uci.Move) error {
 	if err := applyMoveToBoard(g.board, move, g.enPassantTarget); err != nil {
 		return err
 	}
+	g.castlingRights = g.castlingRights.afterMove(pieceToMove, move)
+	if g.currentTurn == common.Black {
+		g.fullMoveNumber++
+	}
 
 	// Clear en passant target of last move
 	g.enPassantTarget = nil
@@ -201,46 +209,12 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 	} else {
 		possibleMoves = piece.GetValidMoves(fromX, fromY, g.board)
 	}
+	if piece.GetType() == common.King {
+		possibleMoves = append(possibleMoves, g.castlingMoves(Position{X: fromX, Y: fromY})...)
+	}
 
 	var legalMoves []Position
 	for _, move := range possibleMoves {
-		// Special castling validation for King pieces
-		if piece.GetType() == common.King {
-			isCastling := (move.X == fromX+2 || move.X == fromX-2)
-			if isCastling {
-				// Castling rules:
-				// 1. King cannot be in check
-				// 2. King cannot pass through check
-				// 3. King cannot end in check (already validated below)
-
-				kingX, kingY := fromX, fromY
-				opponentColor := g.getOpponentColor()
-
-				if g.board.IsSquareAttacked(kingX, kingY, opponentColor) {
-					continue
-				}
-
-				var passedSquares []Position
-				if move.X > fromX { // Kingside castling
-					passedSquares = []Position{{X: fromX + 1, Y: fromY}, {X: fromX + 2, Y: fromY}}
-				} else { // Queenside castling
-					passedSquares = []Position{{X: fromX - 1, Y: fromY}, {X: fromX - 2, Y: fromY}}
-				}
-
-				canCastle := true
-				for _, square := range passedSquares {
-					if g.board.IsSquareAttacked(square.X, square.Y, opponentColor) {
-						canCastle = false
-						break
-					}
-				}
-
-				if !canCastle {
-					continue
-				}
-			}
-		}
-
 		// 2. Crie uma CÓPIA do tabuleiro para simular o movimento
 		boardCopy := g.board.Copy()
 
@@ -389,7 +363,7 @@ func (g *Game) generatePositionHash() string {
 		hash += fmt.Sprintf("ep:%d%d", g.enPassantTarget.X, g.enPassantTarget.Y)
 	}
 
-	hash += fmt.Sprintf("castle:%t%t", g.board.HasCastlingRights(common.White), g.board.HasCastlingRights(common.Black))
+	hash += fmt.Sprintf("castle:%d", g.castlingRights)
 	return hash
 }
 

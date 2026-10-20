@@ -84,12 +84,8 @@ func promotePawn(board IBoard, move uci.Move, color common.Color) error {
 // (including the zero value) promotes to a queen.
 func newPromotedPiece(promotion common.PieceType, color common.Color) IPiece {
 	switch promotion {
-	case common.Rook:
-		return NewRook(color)
-	case common.Bishop:
-		return NewBishop(color)
-	case common.Knight:
-		return NewKnight(color)
+	case common.Rook, common.Bishop, common.Knight:
+		return newPiece(promotion, color)
 	default:
 		return NewQueen(color)
 	}

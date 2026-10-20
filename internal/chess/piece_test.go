@@ -17,7 +17,6 @@ func TestPawnTable(t *testing.T) {
 	tests := []struct {
 		name      string
 		piece     *Pawn
-		hasMoved  bool
 		pos       Position
 		setup     func(board *Board)
 		enPassant *Position
@@ -26,17 +25,15 @@ func TestPawnTable(t *testing.T) {
 		{
 			name:      "Initial double move",
 			piece:     NewPawn(common.White),
-			hasMoved:  false,
 			pos:       Position{X: 4, Y: 6},
 			setup:     func(board *Board) {},
 			enPassant: nil,
 			expected:  []Position{{X: 4, Y: 5}, {X: 4, Y: 4}},
 		},
 		{
-			name:     "White Attack left",
-			piece:    NewPawn(common.White),
-			hasMoved: true,
-			pos:      Position{X: 4, Y: 4},
+			name:  "White Attack left",
+			piece: NewPawn(common.White),
+			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
 				board.board[3][3] = NewPawn(common.Black)
 				board.board[5][3] = NewPawn(common.White)
@@ -45,10 +42,9 @@ func TestPawnTable(t *testing.T) {
 			expected:  []Position{{X: 4, Y: 3}, {X: 3, Y: 3}},
 		},
 		{
-			name:     "White Attack right",
-			piece:    NewPawn(common.White),
-			hasMoved: true,
-			pos:      Position{X: 4, Y: 4},
+			name:  "White Attack right",
+			piece: NewPawn(common.White),
+			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
 				board.board[3][3] = NewPawn(common.White)
 				board.board[5][3] = NewPawn(common.Black)
@@ -57,10 +53,9 @@ func TestPawnTable(t *testing.T) {
 			expected:  []Position{{X: 4, Y: 3}, {X: 5, Y: 3}},
 		},
 		{
-			name:     "Black Attack Left",
-			piece:    NewPawn(common.Black),
-			hasMoved: true,
-			pos:      Position{X: 4, Y: 4},
+			name:  "Black Attack Left",
+			piece: NewPawn(common.Black),
+			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
 				board.board[3][5] = NewPawn(common.White)
 				board.board[5][5] = NewPawn(common.Black)
@@ -69,10 +64,9 @@ func TestPawnTable(t *testing.T) {
 			expected:  []Position{{X: 4, Y: 5}, {X: 3, Y: 5}},
 		},
 		{
-			name:     "Black Attack right",
-			piece:    NewPawn(common.Black),
-			hasMoved: true,
-			pos:      Position{X: 4, Y: 4},
+			name:  "Black Attack right",
+			piece: NewPawn(common.Black),
+			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
 				board.board[3][5] = NewPawn(common.Black)
 				board.board[5][5] = NewPawn(common.White)
@@ -81,14 +75,11 @@ func TestPawnTable(t *testing.T) {
 			expected:  []Position{{X: 4, Y: 5}, {X: 5, Y: 5}},
 		},
 		{
-			name:     "En passant",
-			piece:    NewPawn(common.White),
-			hasMoved: true,
-			pos:      Position{X: 4, Y: 3},
+			name:  "En passant",
+			piece: NewPawn(common.White),
+			pos:   Position{X: 4, Y: 3},
 			setup: func(board *Board) {
-				p := NewPawn(common.Black)
-				p.SetHasMoved(true)
-				board.board[5][3] = p
+				board.board[5][3] = NewPawn(common.Black)
 			},
 			enPassant: &Position{X: 5, Y: 2},
 			expected:  []Position{{X: 4, Y: 2}, {X: 5, Y: 2}},
@@ -97,9 +88,7 @@ func TestPawnTable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//TODO: Need reset hasMoved for some cases.
 			board := emptyBoard()
-			tt.piece.SetHasMoved(tt.hasMoved)
 			board.board[tt.pos.X][tt.pos.Y] = tt.piece
 			tt.setup(board)
 			got := tt.piece.GetValidMovesWithEnPassant(tt.pos.X, tt.pos.Y, board, tt.enPassant)
