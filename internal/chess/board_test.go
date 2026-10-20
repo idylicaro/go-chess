@@ -130,13 +130,12 @@ func TestBoard_RemovePiece(t *testing.T) {
 
 func TestBoard_MovePiece(t *testing.T) {
 	tests := []struct {
-		name             string
-		initialBoard     *Board
-		fromX, fromY     int
-		toX, toY         int
-		expectedErr      error
-		expectedHasMoved map[string]bool // map[pieceType_color]hasMoved
-		expectedKingPos  map[common.Color]Position
+		name            string
+		initialBoard    *Board
+		fromX, fromY    int
+		toX, toY        int
+		expectedErr     error
+		expectedKingPos map[common.Color]Position
 	}{
 		{
 			name: "Move Pawn to empty square",
@@ -148,8 +147,7 @@ func TestBoard_MovePiece(t *testing.T) {
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 6, toX: 0, toY: 5,
-			expectedErr:      nil,
-			expectedHasMoved: map[string]bool{"Pawn_White": true},
+			expectedErr: nil,
 			expectedKingPos: map[common.Color]Position{
 				common.White: {X: 4, Y: 7},
 				common.Black: {X: 4, Y: 0},
@@ -166,8 +164,7 @@ func TestBoard_MovePiece(t *testing.T) {
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 7, toX: 0, toY: 5,
-			expectedErr:      nil,
-			expectedHasMoved: map[string]bool{"Rook_White": true},
+			expectedErr: nil,
 			expectedKingPos: map[common.Color]Position{
 				common.White: {X: 4, Y: 7},
 				common.Black: {X: 4, Y: 0},
@@ -183,8 +180,7 @@ func TestBoard_MovePiece(t *testing.T) {
 				return b.(*Board)
 			}(),
 			fromX: 4, fromY: 7, toX: 4, toY: 6,
-			expectedErr:      nil,
-			expectedHasMoved: map[string]bool{"King_White": true},
+			expectedErr: nil,
 			expectedKingPos: map[common.Color]Position{
 				common.White: {X: 4, Y: 6}, // King position should be updated
 				common.Black: {X: 4, Y: 0},
@@ -199,8 +195,7 @@ func TestBoard_MovePiece(t *testing.T) {
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 0, toX: 0, toY: 1,
-			expectedErr:      errors.New("could not get piece from (0, 0): no piece found at coordinates"), // Customize if your GetPiece returns 'no piece found' error
-			expectedHasMoved: nil,
+			expectedErr: errors.New("could not get piece from (0, 0): no piece found at coordinates"), // Customize if your GetPiece returns 'no piece found' error
 			expectedKingPos: map[common.Color]Position{
 				common.White: {X: 4, Y: 7},
 				common.Black: {X: 4, Y: 0},
@@ -216,8 +211,7 @@ func TestBoard_MovePiece(t *testing.T) {
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 6, toX: 0, toY: 8, // Invalid Y coordinate
-			expectedErr:      errors.New("invalid coordinates"),
-			expectedHasMoved: nil,
+			expectedErr: errors.New("invalid coordinates"),
 			expectedKingPos: map[common.Color]Position{
 				common.White: {X: 4, Y: 7},
 				common.Black: {X: 4, Y: 0},
@@ -227,7 +221,7 @@ func TestBoard_MovePiece(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Get the piece before moving to check hasMoved status later
+			// Get the piece before moving to compare with the destination later
 			pieceBeforeMove, _ := tt.initialBoard.GetPiece(tt.fromX, tt.fromY)
 
 			err := tt.initialBoard.MovePiece(tt.fromX, tt.fromY, tt.toX, tt.toY)
@@ -256,24 +250,6 @@ func TestBoard_MovePiece(t *testing.T) {
 				originalSquarePiece, _ := tt.initialBoard.GetPiece(tt.fromX, tt.fromY)
 				if originalSquarePiece != nil {
 					t.Errorf("expected original square (%d,%d) to be empty, got %v", tt.fromX, tt.fromY, originalSquarePiece)
-				}
-
-				// Verify hasMoved status
-				if tt.expectedHasMoved != nil && pieceBeforeMove != nil {
-					switch p := pieceBeforeMove.(type) {
-					case *Pawn:
-						if p.hasMoved != tt.expectedHasMoved["Pawn_White"] { // Simplified for White pawn here
-							t.Errorf("Pawn hasMoved status mismatch. Expected %t, got %t", tt.expectedHasMoved["Pawn_White"], p.hasMoved)
-						}
-					case *Rook:
-						if p.hasMoved != tt.expectedHasMoved["Rook_White"] { // Simplified for White rook here
-							t.Errorf("Rook hasMoved status mismatch. Expected %t, got %t", tt.expectedHasMoved["Rook_White"], p.hasMoved)
-						}
-					case *King:
-						if p.hasMoved != tt.expectedHasMoved["King_White"] { // Simplified for White king here
-							t.Errorf("King hasMoved status mismatch. Expected %t, got %t", tt.expectedHasMoved["King_White"], p.hasMoved)
-						}
-					}
 				}
 
 				// Verify King Position update

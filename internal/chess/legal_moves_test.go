@@ -44,18 +44,12 @@ func assertLegal(t *testing.T, targets map[string]bool, square string, want bool
 
 // Regression for #3: castling through a square attacked by a pawn was allowed.
 func TestCastling_ThroughPawnAttackedSquare(t *testing.T) {
-	game := newGameFromSquares(t, map[string]IPiece{
-		"e1": NewKing(common.White), "h1": NewRook(common.White),
-		"a8": NewKing(common.Black), "e2": NewPawn(common.Black), // attacks d1 and f1
-	})
+	game := mustParseFEN(t, "k7/8/8/8/8/8/4p3/4K2R w K - 0 1") // black pawn e2 attacks d1 and f1
 	assertLegal(t, legalTargets(t, game, "e1"), "g1", false)
 }
 
 func TestCastling_AllowedWhenPathIsSafe(t *testing.T) {
-	game := newGameFromSquares(t, map[string]IPiece{
-		"e1": NewKing(common.White), "h1": NewRook(common.White),
-		"a8": NewKing(common.Black), "a7": NewPawn(common.Black),
-	})
+	game := mustParseFEN(t, "k7/p7/8/8/8/8/8/4K2R w K - 0 1")
 	assertLegal(t, legalTargets(t, game, "e1"), "g1", true)
 }
 
