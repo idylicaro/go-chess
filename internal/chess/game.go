@@ -452,50 +452,62 @@ func (g *Game) generatePositionHash() string {
 	return hash
 }
 
-func (g *Game) isInsufficientMaterial() bool {
-	pieces := make(map[common.PieceType]int)
-	bishops := make(map[common.Color][]Position) // Para rastrear cor dos bispos
+// placedPiece is a non-king piece together with the square it stands on.
+type placedPiece struct {
+	pieceType common.PieceType
+	position  Position
+}
 
-	// Contar peças
+// isInsufficientMaterial reports whether neither side can ever deliver mate.
+// Covers: bare kings, a single knight, and any number of bishops (either side)
+// all standing on squares of the same color — which includes K+B vs K and
+// K+B vs K+B with same-colored bishops (#2).
+//
+//	game.isInsufficientMaterial() // true for K+B(c1) vs K+B(f8)
+func (g *Game) isInsufficientMaterial() bool {
+	material := g.collectNonKingPieces()
+	if len(material) == 0 {
+		return true
+	}
+	if len(material) == 1 && material[0].pieceType == common.Knight {
+		return true
+	}
+	return allBishopsOnSameSquareColor(material)
+}
+
+// collectNonKingPieces lists every piece on the board except the kings.
+func (g *Game) collectNonKingPieces() []placedPiece {
+	var material []placedPiece
 	for x := 0; x < 8; x++ {
 		for y := 0; y < 8; y++ {
 			piece, _ := g.board.GetPiece(x, y)
-			if piece != nil && piece.GetType() != common.King {
-				pieces[piece.GetType()]++
-				if piece.GetType() == common.Bishop {
-					bishops[piece.GetColor()] = append(bishops[piece.GetColor()], Position{x, y})
-				}
+			if piece == nil || piece.GetType() == common.King {
+				continue
 			}
+			material = append(material, placedPiece{piece.GetType(), Position{x, y}})
 		}
 	}
+	return material
+}
 
-	totalPieces := 0
-	for _, count := range pieces {
-		totalPieces += count
+// allBishopsOnSameSquareColor is true when material is non-empty, made only of
+// bishops, and every bishop stands on the same square color.
+func allBishopsOnSameSquareColor(material []placedPiece) bool {
+	if len(material) == 0 {
+		return false
 	}
-
-	// Specific checks
-	// only kings
-	if totalPieces == 0 {
-		return true
-	}
-	// King + Bishop vs King
-	if totalPieces == 1 && pieces[common.Bishop] == 1 {
-		return true
-	}
-	// King + Knight vs King
-	if totalPieces == 1 && pieces[common.Knight] == 1 {
-		return true
-	}
-	// King and Bishop vs King and Bishop (Bishop into a diff color squares)
-	if totalPieces == 2 && pieces[common.Bishop] == 2 {
-		// Check if the bishops are on opposite colored squares
-		if (bishops[common.White][0].X+bishops[common.White][0].Y)%2 != (bishops[common.Black][0].X+bishops[common.Black][0].Y)%2 {
-			return true
+	firstSquareColor := squareColor(material[0].position)
+	for _, placed := range material {
+		if placed.pieceType != common.Bishop || squareColor(placed.position) != firstSquareColor {
+			return false
 		}
 	}
+	return true
+}
 
-	return false
+// squareColor returns 0 for light squares and 1 for dark squares.
+func squareColor(position Position) int {
+	return (position.X + position.Y) % 2
 }
 
 // GetDebugInfo implements debug.GameStateProvider
