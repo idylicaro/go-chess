@@ -52,7 +52,7 @@ func main() {
 					fmt.Println("Default: Blitz 3+2")
 				}
 
-				game = chess.NewGameWithTimer(timeConfig)
+				game = chess.NewTimedGame(timeConfig, timer.SystemClock{})
 				err := game.StartTimer()
 				if err != nil {
 					fmt.Printf("Error starting timer: %v\n", err)

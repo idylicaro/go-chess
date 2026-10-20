@@ -3,6 +3,7 @@ package chess
 import (
 	common "idylicaro/go-chess/internal/common"
 	"idylicaro/go-chess/internal/timer"
+	"idylicaro/go-chess/internal/timer/timertest"
 	"idylicaro/go-chess/internal/uci"
 	"testing"
 	"time"
@@ -55,147 +56,107 @@ func TestGameIntegration(t *testing.T) {
 	}
 }
 
-// TestGameWithTimerIntegration tests game with timer functionality
+// TestGameWithTimerIntegration tests game with timer functionality, driving
+// time with a fake clock so every assertion is exact (#6).
 func TestGameWithTimerIntegration(t *testing.T) {
-	t.Run("Game with timer - normal play", func(t *testing.T) {
-		timeConfig := timer.TimeConfig{
-			InitialTime: 30 * time.Second,
-			Increment:   1 * time.Second,
-		}
+	t.Run("Game with timer - increment credited per move", func(t *testing.T) {
+		clock := timertest.NewFakeClock()
+		game := newStartedTimedGame(t, timer.TimeConfig{InitialTime: 30 * time.Second, Increment: time.Second}, clock)
 
-		game := NewGameWithTimer(timeConfig)
+		playTimedMoves(t, game, clock, 100*time.Millisecond, "e2e4", "e7e5", "g1f3", "b8c6")
 
-		// Start the timer
-		err := game.StartTimer()
-		if err != nil {
-			t.Fatalf("Failed to start timer: %v", err)
-		}
-
-		// Make some moves
-		moves := []string{"e2e4", "e7e5", "g1f3", "b8c6"}
-		for _, moveStr := range moves {
-			move, err := uci.ParseMove(moveStr)
-			if err != nil {
-				t.Fatalf("Failed to parse move %s: %v", moveStr, err)
-			}
-
-			err = game.Move(move)
-			if err != nil {
-				t.Fatalf("Failed to make move %s: %v", moveStr, err)
-			}
-
-			// Small delay to simulate thinking time
-			time.Sleep(100 * time.Millisecond)
-		}
-
-		// Check that game is still in progress
+		// Each side thought 2 x 100ms and earned 2 x 1s.
+		assertClock(t, game, common.White, 31*time.Second+800*time.Millisecond)
+		assertClock(t, game, common.Black, 31*time.Second+800*time.Millisecond)
 		if game.GetState() != InProgress {
 			t.Errorf("Expected game to be in progress, got %v", game.GetState())
-		}
-
-		// Check remaining times
-		whiteTime, err := game.GetRemainingTime(common.White)
-		if err != nil {
-			t.Fatalf("Failed to get white time: %v", err)
-		}
-
-		blackTime, err := game.GetRemainingTime(common.Black)
-		if err != nil {
-			t.Fatalf("Failed to get black time: %v", err)
-		}
-
-		// Both players should have close to initial time + increments
-		// Each player made 2 moves, so should have ~30s + 2s - small time consumed
-		// Allow range of 29s to 33s to account for increment and small time consumption
-		if whiteTime < 29*time.Second || whiteTime > 33*time.Second {
-			t.Errorf("White time should be between 29-33s (with increment), got %v", whiteTime)
-		}
-
-		if blackTime < 29*time.Second || blackTime > 33*time.Second {
-			t.Errorf("Black time should be between 29-33s (with increment), got %v", blackTime)
 		}
 	})
 
 	t.Run("Game with timer - no increment", func(t *testing.T) {
-		timeConfig := timer.TimeConfig{
-			InitialTime: 30 * time.Second,
-			Increment:   0, // No increment
+		clock := timertest.NewFakeClock()
+		game := newStartedTimedGame(t, timer.TimeConfig{InitialTime: 30 * time.Second}, clock)
+
+		playTimedMoves(t, game, clock, 100*time.Millisecond, "e2e4", "e7e5", "g1f3", "b8c6")
+
+		assertClock(t, game, common.White, 29*time.Second+800*time.Millisecond)
+		assertClock(t, game, common.Black, 29*time.Second+800*time.Millisecond)
+	})
+
+	// Regression for #6: the move was applied and the turn passed even though
+	// the side to move had already run out of time.
+	t.Run("Game timeout scenario - move rejected", func(t *testing.T) {
+		clock := timertest.NewFakeClock()
+		game := newStartedTimedGame(t, timer.TimeConfig{InitialTime: 100 * time.Millisecond}, clock)
+		clock.Advance(200 * time.Millisecond)
+
+		if err := game.Move(mustParseUCI(t, "e2e4")); err == nil {
+			t.Fatal("Move after running out of time succeeded, want an error")
 		}
-
-		game := NewGameWithTimer(timeConfig)
-
-		// Start the timer
-		err := game.StartTimer()
-		if err != nil {
-			t.Fatalf("Failed to start timer: %v", err)
+		if game.GetState() != TimeoutWhite {
+			t.Errorf("Expected state %v, got %v", TimeoutWhite, game.GetState())
 		}
-
-		// Make some moves
-		moves := []string{"e2e4", "e7e5", "g1f3", "b8c6"}
-		for _, moveStr := range moves {
-			move, err := uci.ParseMove(moveStr)
-			if err != nil {
-				t.Fatalf("Failed to parse move %s: %v", moveStr, err)
-			}
-
-			err = game.Move(move)
-			if err != nil {
-				t.Fatalf("Failed to make move %s: %v", moveStr, err)
-			}
-
-			// Small delay to simulate thinking time
-			time.Sleep(100 * time.Millisecond)
+		if game.GetCurrentTurn() != common.White {
+			t.Errorf("turn passed to %v after a rejected move", game.GetCurrentTurn())
 		}
-
-		// Check remaining times - should be less than initial (no increment)
-		whiteTime, err := game.GetRemainingTime(common.White)
-		if err != nil {
-			t.Fatalf("Failed to get white time: %v", err)
-		}
-
-		blackTime, err := game.GetRemainingTime(common.Black)
-		if err != nil {
-			t.Fatalf("Failed to get black time: %v", err)
-		}
-
-		// Without increment, time should decrease
-		if whiteTime >= 30*time.Second {
-			t.Errorf("White time should be less than 30s (no increment), got %v", whiteTime)
-		}
-
-		if blackTime >= 30*time.Second {
-			t.Errorf("Black time should be less than 30s (no increment), got %v", blackTime)
+		if pawn, _ := game.GetBoard().GetPiece(4, 6); pawn == nil {
+			t.Error("e2 pawn moved although the move was rejected")
 		}
 	})
 
-	t.Run("Game timeout scenario", func(t *testing.T) {
-		timeConfig := timer.TimeConfig{
-			InitialTime: 100 * time.Millisecond, // Very short time
-			Increment:   0,
+	t.Run("Game timer - pause freezes both clocks", func(t *testing.T) {
+		clock := timertest.NewFakeClock()
+		game := newStartedTimedGame(t, timer.TimeConfig{InitialTime: 10 * time.Second}, clock)
+		clock.Advance(time.Second)
+
+		if err := game.PauseTimer(); err != nil {
+			t.Fatalf("PauseTimer: %v", err)
 		}
-
-		game := NewGameWithTimer(timeConfig)
-		err := game.StartTimer()
-		if err != nil {
-			t.Fatalf("Failed to start timer: %v", err)
-		}
-
-		// Wait for timeout
-		time.Sleep(200 * time.Millisecond)
-
-		// Try to make a move - should detect timeout
-		move, _ := uci.ParseMove("e2e4")
-		err = game.Move(move)
-
-		// Should either get timeout error or game state should show timeout
-		if err == nil {
-			// Check if game state reflects timeout
-			state := game.GetState()
-			if state != TimeoutWhite && state != TimeoutBlack {
-				t.Errorf("Expected timeout state, got %v", state)
-			}
+		clock.Advance(time.Hour)
+		assertClock(t, game, common.White, 9*time.Second)
+		if err := game.Move(mustParseUCI(t, "e2e4")); err != nil {
+			t.Fatalf("move while paused should not time out: %v", err)
 		}
 	})
+}
+
+func TestGameState_StringCoversTimeouts(t *testing.T) {
+	for state, want := range map[GameState]string{TimeoutWhite: "TimeoutWhite", TimeoutBlack: "TimeoutBlack"} {
+		if got := state.String(); got != want {
+			t.Errorf("GameState(%d).String() = %q, want %q", int(state), got, want)
+		}
+	}
+}
+
+func newStartedTimedGame(t *testing.T, config timer.TimeConfig, clock timer.Clock) *Game {
+	t.Helper()
+	game := NewTimedGame(config, clock)
+	if err := game.StartTimer(); err != nil {
+		t.Fatalf("Failed to start timer: %v", err)
+	}
+	return game
+}
+
+// playTimedMoves plays each UCI move after the side to move thinks for thinkTime.
+func playTimedMoves(t *testing.T, game *Game, clock *timertest.FakeClock, thinkTime time.Duration, moves ...string) {
+	t.Helper()
+	for _, notation := range moves {
+		clock.Advance(thinkTime)
+		if err := game.Move(mustParseUCI(t, notation)); err != nil {
+			t.Fatalf("Failed to make move %s: %v", notation, err)
+		}
+	}
+}
+
+func assertClock(t *testing.T, game *Game, color common.Color, want time.Duration) {
+	t.Helper()
+	got, err := game.GetRemainingTime(color)
+	if err != nil {
+		t.Fatalf("GetRemainingTime(%v): %v", color, err)
+	}
+	if got != want {
+		t.Errorf("%v clock = %v, want %v", color, got, want)
+	}
 }
 
 // TestCastlingIntegration tests castling scenarios

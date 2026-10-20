@@ -92,7 +92,7 @@ func BenchmarkTimerOperations(b *testing.B) {
 		Increment:   5 * time.Second,
 	}
 
-	game := NewGameWithTimer(timeConfig)
+	game := NewTimedGame(timeConfig, timer.SystemClock{})
 	game.StartTimer()
 
 	b.ResetTimer()
@@ -106,7 +106,7 @@ func BenchmarkTimerOperations(b *testing.B) {
 		game.Move(move)
 
 		// Reset game for next iteration
-		game = NewGameWithTimer(timeConfig)
+		game = NewTimedGame(timeConfig, timer.SystemClock{})
 		game.StartTimer()
 	}
 }
