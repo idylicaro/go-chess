@@ -50,13 +50,6 @@ func NewGameTimerWithClock(config TimeConfig, clock Clock) *GameTimer {
 	}
 }
 
-// NewGameTimer creates a stopped clock that reads the wall clock.
-//
-// Deprecated: use NewGameTimerWithClock(config, SystemClock{}).
-func NewGameTimer(config TimeConfig) *GameTimer {
-	return NewGameTimerWithClock(config, SystemClock{})
-}
-
 // Start runs color's clock from now.
 func (gt *GameTimer) Start(color common.Color) {
 	gt.mu.Lock()

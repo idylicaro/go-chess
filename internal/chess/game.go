@@ -58,13 +58,6 @@ func NewTimedGame(timeConfig timer.TimeConfig, clock timer.Clock) *Game {
 	return game
 }
 
-// NewGameWithTimer creates a game with a chess clock reading the wall clock.
-//
-// Deprecated: use NewTimedGame(timeConfig, timer.SystemClock{}).
-func NewGameWithTimer(timeConfig timer.TimeConfig) *Game {
-	return NewTimedGame(timeConfig, timer.SystemClock{})
-}
-
 func (g *Game) GetCurrentTurn() common.Color {
 	return g.currentTurn
 }
