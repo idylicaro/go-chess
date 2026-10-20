@@ -14,12 +14,15 @@ type Game struct {
 	currentTurn     common.Color
 	state           GameState
 	enPassantTarget *Position
-	halfMoveClock   int              // For fifty-move rule
+	halfMoveClock   int              // Plies since the last capture or pawn move, for the fifty-move rule
 	positionHistory map[string]int   // For threefold repetition
 	moveHistory     []uci.Move       // For move history tracking
 	gameTimer       *timer.GameTimer // Timer control
 	//TODO: Draw Reason
 }
+
+// fiftyMoveRulePlies is 50 moves per side; halfMoveClock counts plies (#5).
+const fiftyMoveRulePlies = 100
 
 type GameState int
 
@@ -336,7 +339,7 @@ func (g *Game) updateGameState() {
 }
 
 func (g *Game) isDraw() bool {
-	if g.halfMoveClock >= 50 {
+	if g.halfMoveClock >= fiftyMoveRulePlies {
 		return true
 	}
 	if g.isThreefoldRepetition() {
