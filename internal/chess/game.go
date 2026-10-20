@@ -46,23 +46,23 @@ func NewGame() *Game {
 	}
 }
 
+// NewTimedGame creates a game with a chess clock reading time from clock.
+// Timeouts are detected by polling the clock on each move, so no timeout
+// callback is installed (the old one printed from inside the library, #6).
+//
+//	game := NewTimedGame(timer.Blitz3Plus2, timer.SystemClock{})
+//	_ = game.StartTimer()
+func NewTimedGame(timeConfig timer.TimeConfig, clock timer.Clock) *Game {
+	game := NewGame()
+	game.gameTimer = timer.NewGameTimerWithClock(timeConfig, clock)
+	return game
+}
+
+// NewGameWithTimer creates a game with a chess clock reading the wall clock.
+//
+// Deprecated: use NewTimedGame(timeConfig, timer.SystemClock{}).
 func NewGameWithTimer(timeConfig timer.TimeConfig) *Game {
-	gameTimer := timer.NewGameTimer(timeConfig)
-
-	// Set timeout callback
-	gameTimer.SetTimeoutCallback(func(color common.Color) {
-		fmt.Printf("Timeout for %v player!", color)
-		// This will be called when timeout occurs
-		// We'll handle it in the Move method
-	})
-
-	return &Game{
-		board:           NewInitialBoard(),
-		currentTurn:     common.White,
-		state:           InProgress,
-		enPassantTarget: nil,
-		gameTimer:       gameTimer,
-	}
+	return NewTimedGame(timeConfig, timer.SystemClock{})
 }
 
 func (g *Game) GetCurrentTurn() common.Color {
@@ -121,6 +121,10 @@ func (g *Game) Move(move uci.Move) error {
 	moveStr := fmt.Sprintf("(%d,%d)->(%d,%d)", move.FromX, move.FromY, move.ToX, move.ToY)
 	debug.NewChessDebugger().LogMove(moveStr, g.currentTurn.String(), g.state)
 
+	if err := g.rejectIfOutOfTime(); err != nil {
+		return err
+	}
+
 	pieceToMove, _ := g.board.GetPiece(move.FromX, move.FromY)
 
 	if pieceToMove == nil || pieceToMove.GetColor() != g.currentTurn {
@@ -170,19 +174,7 @@ func (g *Game) Move(move uci.Move) error {
 	// Switch turn first
 	nextTurn := g.getOpponentColor()
 
-	// Handle timer if present
 	if g.gameTimer != nil {
-		// Check for timeout before switching
-		if g.gameTimer.IsTimeout(g.currentTurn) {
-			if g.currentTurn == common.White {
-				g.state = TimeoutWhite
-			} else {
-				g.state = TimeoutBlack
-			}
-			return fmt.Errorf("game over - timeout")
-		}
-
-		// Switch timer to next player
 		g.gameTimer.SwitchPlayer(nextTurn)
 	}
 
@@ -302,17 +294,35 @@ func (g *Game) getAllLegalMoves(color common.Color) []Position {
 	return allMoves
 }
 
+// rejectIfOutOfTime blocks a move by a side whose clock has run out, before
+// anything on the board changes. Previously the clock was only checked after
+// the move had been applied, using stale banked time, so it never fired (#6).
+func (g *Game) rejectIfOutOfTime() error {
+	if state, timedOut := g.timeoutState(); timedOut {
+		g.state = state
+		return fmt.Errorf("game over: %v ran out of time (state %v)", g.currentTurn, state)
+	}
+	return nil
+}
+
+// timeoutState returns TimeoutWhite/TimeoutBlack when either clock has run out.
+func (g *Game) timeoutState() (GameState, bool) {
+	if g.gameTimer == nil {
+		return InProgress, false
+	}
+	if g.gameTimer.IsTimeout(common.White) {
+		return TimeoutWhite, true
+	}
+	if g.gameTimer.IsTimeout(common.Black) {
+		return TimeoutBlack, true
+	}
+	return InProgress, false
+}
+
 func (g *Game) updateGameState() {
-	// Check for timeout first
-	if g.gameTimer != nil {
-		if g.gameTimer.IsTimeout(common.White) {
-			g.state = TimeoutWhite
-			return
-		}
-		if g.gameTimer.IsTimeout(common.Black) {
-			g.state = TimeoutBlack
-			return
-		}
+	if state, timedOut := g.timeoutState(); timedOut {
+		g.state = state
+		return
 	}
 
 	allLegalMoves := g.getAllLegalMoves(g.currentTurn)
@@ -486,6 +496,10 @@ func (gs GameState) String() string {
 		return "Stalemate"
 	case Draw:
 		return "Draw"
+	case TimeoutWhite:
+		return "TimeoutWhite"
+	case TimeoutBlack:
+		return "TimeoutBlack"
 	default:
 		return "Unknown"
 	}

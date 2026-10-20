@@ -1,135 +1,131 @@
-package timer
+package timer_test
 
 import (
-	"sync"
 	"testing"
 	"time"
 
 	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/timer"
+	"idylicaro/go-chess/internal/timer/timertest"
 )
 
-// Ajudante para verificar o tempo com uma pequena margem de erro
-func checkRemainingTime(t *testing.T, timer *GameTimer, color common.Color, expected time.Duration) {
+func newTestTimer(initial, increment time.Duration) (*timer.GameTimer, *timertest.FakeClock) {
+	clock := timertest.NewFakeClock()
+	config := timer.TimeConfig{InitialTime: initial, Increment: increment}
+	return timer.NewGameTimerWithClock(config, clock), clock
+}
+
+func assertRemaining(t *testing.T, gt *timer.GameTimer, color common.Color, want time.Duration) {
 	t.Helper()
-	// Use uma pequena margem de erro para levar em conta a precisão da máquina
-	delta := 20 * time.Millisecond
-	actual := timer.GetRemainingTime(color)
-	if actual < expected-delta || actual > expected+delta {
-		t.Errorf("Tempo restante para %s incorreto. Esperado: %v, Recebido: %v", color, expected, actual)
+	if got := gt.GetRemainingTime(color); got != want {
+		t.Errorf("remaining time for %v = %v, want %v", color, got, want)
 	}
 }
 
-// Teste o fluxo de jogo completo com incremento
-func TestGameTimer_FullFlow(t *testing.T) {
-	// Configurações do timer: 10 segundos iniciais, 1 segundo de incremento
-	config := TimeConfig{InitialTime: 10 * time.Second, Increment: 1 * time.Second}
-	gt := NewGameTimer(config)
-
-	// Inicia o timer para as Brancas
+// Full flow with increment: elapsed time is charged to the side to move and
+// the increment is credited when it hands the clock over.
+func TestGameTimer_FullFlowWithIncrement(t *testing.T) {
+	gt, clock := newTestTimer(10*time.Second, time.Second)
 	gt.Start(common.White)
-	if !gt.white.active {
-		t.Error("Relógio das Brancas não foi ativado corretamente")
-	}
 
-	// Simula 2 segundos de jogo para as Brancas
-	time.Sleep(2 * time.Second)
+	clock.Advance(2 * time.Second)
+	assertRemaining(t, gt, common.White, 8*time.Second)
 
-	// Verifica o tempo restante das Brancas
-	// Esperado: 10s (inicial) - 2s (decorrido) = 8s
-	checkRemainingTime(t, gt, common.White, 8*time.Second)
-
-	// Troca para as Pretas
 	gt.SwitchPlayer(common.Black)
-	if !gt.black.active {
-		t.Error("Relógio das Pretas não foi ativado após a troca")
-	}
-	// Verifica o tempo restante das Brancas após o incremento
-	// Esperado: 8s (anterior) + 1s (incremento) = 9s
-	checkRemainingTime(t, gt, common.White, 9*time.Second)
+	assertRemaining(t, gt, common.White, 9*time.Second)
 
-	// Simula 3 segundos de jogo para as Pretas
-	time.Sleep(3 * time.Second)
+	clock.Advance(3 * time.Second)
+	assertRemaining(t, gt, common.Black, 7*time.Second)
+	assertRemaining(t, gt, common.White, 9*time.Second) // idle clock does not run
 
-	// Verifica o tempo restante das Pretas
-	// Esperado: 10s (inicial) - 3s (decorrido) = 7s
-	checkRemainingTime(t, gt, common.Black, 7*time.Second)
-
-	// Troca de volta para as Brancas
 	gt.SwitchPlayer(common.White)
-	// Verifica o tempo restante das Pretas após o incremento
-	// Esperado: 7s (anterior) + 1s (incremento) = 8s
-	checkRemainingTime(t, gt, common.Black, 8*time.Second)
+	assertRemaining(t, gt, common.Black, 8*time.Second)
 }
 
-// Teste a condição de Timeout
-func TestGameTimer_Timeout(t *testing.T) {
-	// Use uma pequena quantidade de tempo para facilitar o teste de timeout
-	config := TimeConfig{InitialTime: 100 * time.Millisecond, Increment: 0}
-	gt := NewGameTimer(config)
+func TestGameTimer_RemainingBeforeStart(t *testing.T) {
+	gt, clock := newTestTimer(10*time.Second, 0)
+	clock.Advance(5 * time.Second)
+	assertRemaining(t, gt, common.White, 10*time.Second)
+	assertRemaining(t, gt, common.Black, 10*time.Second)
+}
 
-	timeoutColor := common.White
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	// Define a função de callback
-	gt.SetTimeoutCallback(func(color common.Color) {
-		timeoutColor = color
-		wg.Done()
-	})
-
-	// Inicia e simula um timeout
+// Regression for #6: IsTimeout ignored the running clock, so a player who
+// had run out of time was still allowed to move.
+func TestGameTimer_IsTimeoutWhileClockRuns(t *testing.T) {
+	gt, clock := newTestTimer(time.Second, 0)
 	gt.Start(common.White)
-	time.Sleep(200 * time.Millisecond) // Dorme por mais tempo do que o tempo inicial
-	gt.SwitchPlayer(common.Black)      // Dispara o timeout
 
-	// Espera pelo callback
-	wg.Wait()
-
-	if timeoutColor != common.White {
-		t.Errorf("Timeout incorreto. Esperado: %s, Recebido: %s", common.White, timeoutColor)
+	clock.Advance(999 * time.Millisecond)
+	if gt.IsTimeout(common.White) {
+		t.Fatal("IsTimeout(White) = true with 1ms left")
 	}
-
-	// A função IsTimeout deve retornar verdadeiro para as Brancas
+	clock.Advance(time.Millisecond)
 	if !gt.IsTimeout(common.White) {
-		t.Error("IsTimeout deveria ser true para as Brancas")
+		t.Error("IsTimeout(White) = false after the whole second elapsed")
+	}
+	if gt.IsTimeout(common.Black) {
+		t.Error("IsTimeout(Black) = true although Black's clock never ran")
 	}
 }
 
-// Teste a função GetRemainingTime para quando o timer está inativo
-func TestGameTimer_GetRemainingTime_Inactive(t *testing.T) {
-	config := TimeConfig{InitialTime: 10 * time.Second}
-	gt := NewGameTimer(config)
-
-	// O timer está inativo inicialmente.
-	remaining := gt.GetRemainingTime(common.White)
-	if remaining != 10*time.Second {
-		t.Errorf("Tempo restante incorreto para jogador inativo. Esperado: %v, Recebido: %v", 10*time.Second, remaining)
-	}
-
-	// Inicia o timer, simula um pouco de tempo e depois o desativa.
+// Regression for #6: Pause only set a flag and the clock kept running.
+func TestGameTimer_PauseFreezesAndResumeContinues(t *testing.T) {
+	gt, clock := newTestTimer(10*time.Second, 0)
 	gt.Start(common.White)
-	time.Sleep(1 * time.Second)
-	gt.SwitchPlayer(common.Black)
+	clock.Advance(2 * time.Second)
 
-	// O tempo das Brancas deve ter o tempo correto, mesmo estando inativo
-	checkRemainingTime(t, gt, common.White, 9*time.Second)
+	gt.Pause()
+	clock.Advance(time.Minute)
+	assertRemaining(t, gt, common.White, 8*time.Second)
+
+	gt.Resume()
+	clock.Advance(3 * time.Second)
+	assertRemaining(t, gt, common.White, 5*time.Second)
 }
 
-// Teste para garantir que a função SetTimeoutCallback funciona
-func TestGameTimer_SetTimeoutCallback(t *testing.T) {
-	config := TimeConfig{InitialTime: 1 * time.Second}
-	gt := NewGameTimer(config)
-	var callbackCalled bool
-	gt.SetTimeoutCallback(func(c common.Color) {
-		callbackCalled = true
-	})
-
-	// Simula um timeout para acionar a função de callback
+func TestGameTimer_PauseTwiceDoesNotDoubleCharge(t *testing.T) {
+	gt, clock := newTestTimer(10*time.Second, 0)
 	gt.Start(common.White)
-	time.Sleep(2 * time.Second)
+	clock.Advance(2 * time.Second)
+	gt.Pause()
+	gt.Pause()
+	assertRemaining(t, gt, common.White, 8*time.Second)
+}
+
+func TestGameTimer_TimeoutCallbackOnSwitch(t *testing.T) {
+	gt, clock := newTestTimer(time.Second, 5*time.Second)
+	var flagged []common.Color
+	gt.SetTimeoutCallback(func(color common.Color) { flagged = append(flagged, color) })
+
+	gt.Start(common.White)
+	clock.Advance(2 * time.Second)
 	gt.SwitchPlayer(common.Black)
 
-	if !callbackCalled {
-		t.Error("A função de callback não foi chamada")
+	if len(flagged) != 1 || flagged[0] != common.White {
+		t.Fatalf("timeout callback calls = %v, want [White]", flagged)
+	}
+	if !gt.IsTimeout(common.White) {
+		t.Error("a flagged player must not be rescued by the increment")
+	}
+}
+
+// Regression for #6: the callback ran while the timer mutex was held, so
+// calling back into the timer from it deadlocked.
+func TestGameTimer_TimeoutCallbackCanUseTimer(t *testing.T) {
+	gt, clock := newTestTimer(time.Second, 0)
+	done := make(chan time.Duration, 1)
+	gt.SetTimeoutCallback(func(color common.Color) { done <- gt.GetRemainingTime(color) })
+
+	gt.Start(common.White)
+	clock.Advance(2 * time.Second)
+	go gt.SwitchPlayer(common.Black)
+
+	select {
+	case remaining := <-done:
+		if remaining != -time.Second {
+			t.Errorf("remaining seen by callback = %v, want -1s", remaining)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timeout callback deadlocked calling GetRemainingTime")
 	}
 }
