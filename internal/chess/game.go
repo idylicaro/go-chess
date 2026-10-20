@@ -147,74 +147,8 @@ func (g *Game) Move(move uci.Move) error {
 		g.halfMoveClock++
 	}
 
-	if pieceToMove.GetType() == common.King {
-		isCastling := (move.ToX == move.FromX+2 || move.ToX == move.FromX-2)
-		if isCastling {
-			// Determine the rook's position and its destination
-			rookFromX := 0
-			rookToX := 0
-			if move.ToX > move.FromX { // Short castling
-				rookFromX = 7
-				rookToX = move.FromX + 1
-			} else { // Long castling
-				rookFromX = 0
-				rookToX = move.FromX - 1
-			}
-			rookFromY := move.FromY
-			rookToY := move.FromY
-
-			g.board.MovePiece(rookFromX, rookFromY, rookToX, rookToY)
-		}
-	}
-
-	// En passant capture
-	if pieceToMove.GetType() == common.Pawn && g.enPassantTarget != nil &&
-		move.ToX == g.enPassantTarget.X && move.ToY == g.enPassantTarget.Y {
-
-		// Calculate the position of the captured pawn
-		var capturedPawnY int
-		if pieceToMove.GetColor() == common.White {
-			capturedPawnY = move.ToY + 1
-		} else {
-			capturedPawnY = move.ToY - 1
-		}
-
-		g.board.RemovePiece(move.ToX, capturedPawnY)
-	}
-
-	isPromotion := false
-	if pieceToMove.GetType() == common.Pawn {
-		if (pieceToMove.GetColor() == common.White && move.ToY == 0) ||
-			(pieceToMove.GetColor() == common.Black && move.ToY == 7) {
-			isPromotion = true
-		}
-	}
-
-	if isPromotion {
-		err := g.board.RemovePiece(move.FromX, move.FromY)
-		if err != nil {
-			return fmt.Errorf("failed to remove pawn during promotion: %v", err)
-		}
-		_ = g.board.RemovePiece(move.ToX, move.ToY) // Ignore error if square is empty
-
-		var promotedPiece IPiece
-		if move.Promotion == common.Rook {
-			promotedPiece = NewRook(pieceToMove.GetColor())
-		} else if move.Promotion == common.Bishop {
-			promotedPiece = NewBishop(pieceToMove.GetColor())
-		} else if move.Promotion == common.Knight {
-			promotedPiece = NewKnight(pieceToMove.GetColor())
-		} else { // Queen is the default promotion
-			promotedPiece = NewQueen(pieceToMove.GetColor())
-		}
-
-		err = g.board.SetPiece(promotedPiece, move.ToX, move.ToY)
-		if err != nil {
-			return fmt.Errorf("failed to set promoted piece: %v", err)
-		}
-	} else {
-		// if not a promotion, move the piece
-		g.board.MovePiece(move.FromX, move.FromY, move.ToX, move.ToY)
+	if err := applyMoveToBoard(g.board, move, g.enPassantTarget); err != nil {
+		return err
 	}
 
 	// Clear en passant target of last move
@@ -322,8 +256,9 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 		// 2. Crie uma CÓPIA do tabuleiro para simular o movimento
 		boardCopy := g.board.Copy()
 
-		// 3. Simule o movimento na cópia
-		moveErr := boardCopy.MovePiece(fromX, fromY, move.X, move.Y)
+		// 3. Simule o movimento na cópia — com roque, en passant e promoção completos (#4)
+		simulated := uci.Move{FromX: fromX, FromY: fromY, ToX: move.X, ToY: move.Y}
+		moveErr := applyMoveToBoard(boardCopy, simulated, g.enPassantTarget)
 		if moveErr != nil {
 			continue
 		}
