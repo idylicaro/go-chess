@@ -45,38 +45,6 @@ func (b *Board) GetKingPosition(color common.Color) (int, int) {
 	return b.kingPos[color].X, b.kingPos[color].Y
 }
 
-// IsSquareAttacked determines whether the square at coordinates (x, y) is attacked by any piece of the specified color (byColor).
-// It iterates over all squares on the board, checks for pieces of the given color, and evaluates their valid moves.
-// If any valid move targets the specified square, the function returns true, indicating the square is under attack.
-// Returns false if no attacking piece is found.
-//
-// Parameters:
-//
-//	x, y    - The coordinates of the square to check.
-//	byColor - The color of the pieces to consider as attackers.
-//
-// Returns:
-//
-//	bool - True if the square is attacked by any piece of the specified color, false otherwise.
-func (b *Board) IsSquareAttacked(x, y int, byColor common.Color) bool {
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			piece, _ := b.GetPiece(i, j)
-
-			if piece != nil && piece.GetColor() == byColor {
-				moves := piece.GetValidMoves(i, j, b)
-				for _, move := range moves {
-					if move.X == x && move.Y == y {
-						return true
-					}
-				}
-			}
-
-		}
-	}
-	return false
-}
-
 func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 	err := b.IsValidCoordinates(fromX, fromY)
 	if err != nil {
