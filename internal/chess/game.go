@@ -17,6 +17,7 @@ type Game struct {
 	castlingRights  CastlingRights   // Castles still available (FEN castling field)
 	halfMoveClock   int              // Plies since the last capture or pawn move, for the fifty-move rule
 	fullMoveNumber  int              // Starts at 1, incremented after each Black move (FEN)
+	initialFEN      string           // Position the game started from, replayed for PGN export
 	positionHistory map[string]int   // For threefold repetition
 	moveHistory     []uci.Move       // For move history tracking
 	gameTimer       *timer.GameTimer // Timer control
@@ -46,6 +47,7 @@ func NewGame() *Game {
 		enPassantTarget: nil,
 		castlingRights:  AllCastlingRights,
 		fullMoveNumber:  1,
+		initialFEN:      StartingFEN,
 		gameTimer:       nil, // No timer by default
 	}
 }
@@ -240,7 +242,11 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 }
 
 func (g *Game) getOpponentColor() common.Color {
-	if g.currentTurn == common.White {
+	return opposite(g.currentTurn)
+}
+
+func opposite(color common.Color) common.Color {
+	if color == common.White {
 		return common.Black
 	}
 	return common.White
@@ -294,8 +300,7 @@ func (g *Game) updateGameState() {
 
 	allLegalMoves := g.getAllLegalMoves(g.currentTurn)
 
-	kingX, kingY := g.board.GetKingPosition(g.currentTurn)
-	isInCheck := g.board.IsSquareAttacked(kingX, kingY, g.getOpponentColor())
+	isInCheck := g.isSideToMoveInCheck()
 
 	if isInCheck {
 		if len(allLegalMoves) == 0 {

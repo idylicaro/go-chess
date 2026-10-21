@@ -34,6 +34,7 @@ func ParseFEN(fen string) (*Game, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid FEN %q: %w", fen, err)
 	}
+	game.initialFEN = game.FEN()
 	game.updateGameState()
 	return game, nil
 }
