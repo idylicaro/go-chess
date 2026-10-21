@@ -3,6 +3,7 @@ package chess
 import (
 	"fmt"
 	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/timer"
 	"strconv"
 	"strings"
 	"unicode"
@@ -36,6 +37,19 @@ func ParseFEN(fen string) (*Game, error) {
 	}
 	game.initialFEN = game.FEN()
 	game.updateGameState()
+	return game, nil
+}
+
+// ParseFENTimed is ParseFEN for a game with a chess clock reading time from
+// clock. Call StartTimer to start it.
+//
+//	game, err := ParseFENTimed(fen, Rapid10Plus0, SystemClock{})
+func ParseFENTimed(fen string, timeConfig TimeConfig, clock Clock) (*Game, error) {
+	game, err := ParseFEN(fen)
+	if err != nil {
+		return nil, err
+	}
+	game.gameTimer = timer.NewGameTimerWithClock(timeConfig, clock)
 	return game, nil
 }
 

@@ -9,8 +9,31 @@ import (
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
+// maxSkillLevel is the top of the "Skill Level" scale that UCI engines such
+// as Stockfish use.
+const maxSkillLevel = 20
+
+// playOptions are the flags of the play command.
+type playOptions struct {
+	fen        string
+	timeText   string
+	enginePath string
+	level      int
+	color      string
+	noColor    bool
+	ascii      bool
+}
+
 func runPlay(e env, args []string) error {
 	fs := newFlagSet(e, "play", "[flags]", "Play a game in the terminal. Moves are typed in SAN (Nf3, exd5, O-O) or UCI (e2e4).\nType \"help\" during the game for the other commands.")
+	var opts playOptions
+	fs.StringVar(&opts.fen, "fen", chess.StartingFEN, "position to start from")
+	fs.StringVar(&opts.timeText, "time", "", "time control as minutes+increment seconds, like 5+3 (default: untimed)")
+	fs.StringVar(&opts.enginePath, "engine", "", "UCI engine to play against, like stockfish (default: two players at one keyboard)")
+	fs.IntVar(&opts.level, "level", -1, "engine strength from 0 to 20 (needs --engine)")
+	fs.StringVar(&opts.color, "color", "white", "your side against the engine: white or black (needs --engine)")
+	fs.BoolVar(&opts.noColor, "no-color", false, "print the board without colors")
+	fs.BoolVar(&opts.ascii, "ascii", false, "draw pieces with letters instead of Unicode symbols")
 	rest, err := parseFlags(fs, args)
 	if err != nil {
 		return err
@@ -18,186 +41,92 @@ func runPlay(e env, args []string) error {
 	if len(rest) > 0 {
 		return usagef("unexpected argument %q", rest[0])
 	}
-	fmt.Fprintln(e.out, "Starting Go Chess Engine...")
+	s, err := newSession(e, opts)
+	if err != nil {
+		return err
+	}
+	defer s.close()
+	return s.loop()
+}
 
-	scanner := bufio.NewScanner(e.in)
-
-	// Ask user about timer
-	fmt.Fprint(e.out, "Do you want to play with timer? (y/n): ")
-	var game *chess.Game
-
-	if scanner.Scan() {
-		response := strings.TrimSpace(scanner.Text())
-		if strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
-			// Ask for time format
-			fmt.Fprintln(e.out, "Choose time format:")
-			fmt.Fprintln(e.out, "1. Blitz (3+2)")
-			fmt.Fprintln(e.out, "2. Rapid (10+0)")
-			fmt.Fprintln(e.out, "3. Classical (90+30)")
-			fmt.Fprint(e.out, "Enter choice (1-3): ")
-
-			if scanner.Scan() {
-				choice := strings.TrimSpace(scanner.Text())
-				var timeConfig chess.TimeConfig
-
-				switch choice {
-				case "1":
-					timeConfig = chess.Blitz3Plus2
-					fmt.Fprintln(e.out, "Selected: Blitz 3+2")
-				case "2":
-					timeConfig = chess.Rapid10Plus0
-					fmt.Fprintln(e.out, "Selected: Rapid 10+0")
-				case "3":
-					timeConfig = chess.Classical90Plus30
-					fmt.Fprintln(e.out, "Selected: Classical 90+30")
-				default:
-					timeConfig = chess.Blitz3Plus2
-					fmt.Fprintln(e.out, "Default: Blitz 3+2")
-				}
-
-				game = chess.NewTimedGame(timeConfig, chess.SystemClock{})
-				if err := game.StartTimer(); err != nil {
-					return fmt.Errorf("starting timer: %w", err)
-				}
-			} else {
-				game = chess.NewGame()
-				fmt.Fprintln(e.out, "Game created without timer!")
-			}
-		} else {
-			game = chess.NewGame()
-		}
-	} else {
-		game = chess.NewGame()
+// newSession builds the game the flags describe and, with --engine, starts
+// the engine.
+func newSession(e env, opts playOptions) (*session, error) {
+	if opts.enginePath == "" && (opts.level >= 0 || opts.color != "white") {
+		return nil, usagef("--level and --color only apply when playing against an engine; add --engine")
+	}
+	if opts.level > maxSkillLevel {
+		return nil, usagef("invalid --level %d: expected 0 to %d", opts.level, maxSkillLevel)
+	}
+	if opts.color != "white" && opts.color != "black" {
+		return nil, usagef("invalid --color %q: expected white or black", opts.color)
 	}
 
-	s := &session{env: e, game: game}
+	s := &session{env: e, style: style{color: !opts.noColor, unicode: !opts.ascii}}
+	var err error
+	if opts.timeText != "" {
+		config, err := parseTimeControl(opts.timeText)
+		if err != nil {
+			return nil, usageError{err.Error()}
+		}
+		s.timeControl = &config
+		if s.game, err = chess.ParseFENTimed(opts.fen, config, chess.SystemClock{}); err != nil {
+			return nil, err
+		}
+		if err := s.game.StartTimer(); err != nil {
+			return nil, err
+		}
+	} else if s.game, err = chess.ParseFEN(opts.fen); err != nil {
+		return nil, err
+	}
+
+	if opts.enginePath != "" {
+		humanColor := chess.White
+		if opts.color == "black" {
+			humanColor = chess.Black
+			s.flipped = true
+		}
+		if err := s.startEngine(opts.enginePath, opts.level, humanColor); err != nil {
+			return nil, err
+		}
+	}
+	return s, nil
+}
+
+// loop plays the game until it ends, the player leaves or the input runs out.
+func (s *session) loop() error {
+	scanner := bufio.NewScanner(s.in)
+	fmt.Fprintln(s.out, "Starting Go Chess Engine...")
 	for {
+		if s.engineToMove() {
+			if err := s.engineMove(); err != nil {
+				return err
+			}
+		}
 		s.show()
-		fmt.Fprintf(e.out, "> Enter a move (SAN or UCI) or a command, \"help\" lists them (%s): ", game.GetCurrentTurn())
+		if s.game.IsOver() {
+			fmt.Fprintf(s.out, "Game over! Result: %s\n", s.game.Result())
+			return nil
+		}
+
+		fmt.Fprintf(s.out, "> Enter a move (SAN or UCI) or a command, \"help\" lists them (%s): ", s.game.GetCurrentTurn())
 		if !scanner.Scan() {
 			return nil
 		}
 		input := strings.TrimSpace(scanner.Text())
-
 		if input == "exit" || input == "quit" {
-			fmt.Fprintln(e.out, "Exiting game.")
+			fmt.Fprintln(s.out, "Exiting game.")
 			return nil
 		}
-		if !s.command(input) {
-			move, err := moveinput.Parse(game, input)
-			if err != nil {
-				fmt.Fprintf(e.out, "Error: %v\n", err)
-				continue
-			}
-			if err := game.Move(move); err != nil {
-				fmt.Fprintf(e.out, "Error: %v\n", err)
-				continue
-			}
+		if s.command(input) {
+			continue
 		}
-		if game.IsOver() {
-			s.show()
-			fmt.Fprintf(e.out, "Game over! Result: %s\n", game.Result())
-			return nil
-		}
-	}
-}
-
-// session is a game in progress on the terminal.
-type session struct {
-	env
-	game    *chess.Game
-	flipped bool // show the board from Black's side
-}
-
-func (s *session) show() {
-	displayGameState(s.out, s.game)
-	displayBoard(s.out, s.game.GetBoard(), nil, s.flipped)
-}
-
-// gameCommands lists the in-game commands for "help", in display order.
-var gameCommands = []struct{ name, help string }{
-	{"moves", "list the legal moves"},
-	{"undo", "take back the last move"},
-	{"resign", "resign the game"},
-	{"draw", "offer a draw"},
-	{"accept", "accept the opponent's draw offer"},
-	{"decline", "decline the opponent's draw offer"},
-	{"fen", "print the position as FEN"},
-	{"pgn", "print the game so far as PGN"},
-	{"flip", "turn the board around"},
-	{"help", "show this list"},
-	{"exit", "leave the game (also: quit)"},
-}
-
-// command runs input if it is an in-game command and reports whether it was.
-func (s *session) command(input string) bool {
-	game := s.game
-	turn := game.GetCurrentTurn()
-	var err error
-	switch input {
-	case "resign":
-		err = game.Resign(turn)
-	case "draw":
-		err = game.OfferDraw(turn)
+		move, err := moveinput.Parse(s.game, input)
 		if err == nil {
-			fmt.Fprintf(s.out, "%v offers a draw. The opponent can type \"accept\" or \"decline\".\n", turn)
+			err = s.play(move)
 		}
-	case "accept":
-		err = game.AcceptDraw(s.answerer())
-	case "decline":
-		err = game.DeclineDraw(s.answerer())
-		if err == nil {
-			fmt.Fprintln(s.out, "Draw offer declined.")
+		if err != nil {
+			fmt.Fprintf(s.out, "Error: %v\n", err)
 		}
-	case "undo":
-		err = game.Undo()
-	case "moves":
-		for _, move := range game.LegalMoves() {
-			san, sanErr := game.SAN(move)
-			if sanErr != nil {
-				san = move.String()
-			}
-			fmt.Fprintf(s.out, "%s ", san)
-		}
-		fmt.Fprintln(s.out)
-	case "fen":
-		fmt.Fprintln(s.out, game.FEN())
-	case "pgn":
-		var text string
-		if text, err = game.PGN(s.pgnHeaders()); err == nil {
-			fmt.Fprint(s.out, text)
-		}
-	case "flip":
-		s.flipped = !s.flipped
-	case "help":
-		for _, c := range gameCommands {
-			fmt.Fprintf(s.out, "  %-8s %s\n", c.name, c.help)
-		}
-		fmt.Fprintln(s.out, "Anything else is read as a move, in SAN (Nf3, exd5, O-O, e8=Q) or UCI (e2e4, e7e8q).")
-	default:
-		return false
-	}
-	if err != nil {
-		fmt.Fprintf(s.out, "Error: %v\n", err)
-	}
-	return true
-}
-
-// answerer is the side that answers a pending draw offer: the opponent of
-// whoever made it, which is not necessarily the side to move.
-func (s *session) answerer() chess.Color {
-	if by, pending := s.game.PendingDrawOffer(); pending && by == chess.White {
-		return chess.Black
-	}
-	return chess.White
-}
-
-func (s *session) pgnHeaders() chess.PGNHeaders {
-	return chess.PGNHeaders{
-		Event: "Casual game",
-		Site:  "go-chess CLI",
-		Date:  s.now().Format("2006.01.02"),
-		White: "White",
-		Black: "Black",
 	}
 }

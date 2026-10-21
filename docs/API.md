@@ -8,7 +8,7 @@ Registro das decisões da revisão feita na v1.1 (#15). A API pública é o que 
 |---|---|---|
 | Partida | `Game`, `NewGame`, `NewTimedGame`, `Move`, `Undo`, `LegalMoves`, `IsOver`, `Result`, `DrawReason`, `GetCurrentTurn`, `GetState` | Núcleo do uso da biblioteca. |
 | Encerramento | `Resign`, `OfferDraw`, `AcceptDraw`, `DeclineDraw`, `PendingDrawOffer` | Regras de fim de partida. |
-| Notação | `ParseFEN`, `FEN`, `StartingFEN`, `SAN`, `ParseSAN`, `ParseMove`, `PGN`, `PGNHeaders` | Entrada e saída de partidas. |
+| Notação | `ParseFEN`, `ParseFENTimed`, `FEN`, `StartingFEN`, `SAN`, `ParseSAN`, `ParseMove`, `PGN`, `PGNHeaders` | Entrada e saída de partidas. |
 | Verificação | `Perft`, `Divide` | Usados pelos testes de referência e por ferramentas externas. |
 | Relógio | `StartTimer`, `PauseTimer`, `ResumeTimer`, `HasTimer`, `GetRemainingTime`, `TimeConfig`, `Clock`, `SystemClock`, `Blitz3Plus2`, `Rapid10Plus0`, `Classical90Plus30` | Partidas com tempo e relógio injetável. |
 | Tipos | `Color`, `White`, `Black`, `PieceType`, `PromoteTo*`, `Result*`, `GameState`, `CastlingRights`, `ErrGameOver`, `ErrNoMoveToUndo`, `ErrInvalidNotation`, `ErrIllegalMove`, `ErrAmbiguousMove` | Tipos que aparecem nas assinaturas acima. |

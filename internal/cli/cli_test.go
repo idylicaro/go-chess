@@ -9,20 +9,26 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
 // TestMain lets the test binary double as a scripted UCI engine: analyze
 // tests point --engine at os.Args[0] with GO_CHESS_FAKE_UCI set.
 func TestMain(m *testing.M) {
-	if os.Getenv("GO_CHESS_FAKE_UCI") == "1" {
+	if os.Getenv("GO_CHESS_FAKE_UCI") != "" {
 		fakeEngine()
 		return
 	}
 	os.Exit(m.Run())
 }
 
+// fakeEngine speaks just enough UCI. Mode "1" is a fixed script for analyze;
+// mode "2" plays the first legal move of whatever position it is given and
+// reports the score in GO_CHESS_FAKE_SCORE centipawns for the side to move.
 func fakeEngine() {
 	scanner := bufio.NewScanner(os.Stdin)
+	var fen string
 	for scanner.Scan() {
 		command := scanner.Text()
 		switch {
@@ -30,10 +36,21 @@ func fakeEngine() {
 			fmt.Println("id name FakeFish\nuciok")
 		case command == "isready":
 			fmt.Println("readyok")
-		case strings.HasPrefix(command, "go"):
+		case strings.HasPrefix(command, "position fen "):
+			fen = strings.TrimPrefix(command, "position fen ")
+		case strings.HasPrefix(command, "go") && os.Getenv("GO_CHESS_FAKE_UCI") == "1":
 			fmt.Println("info depth 1 score cp 30 pv e2e4 e7e5")
 			fmt.Println("info depth 2 score cp 40 pv e2e4 e7e5 g1f3")
 			fmt.Println("bestmove e2e4")
+		case strings.HasPrefix(command, "go"):
+			game, err := chess.ParseFEN(fen)
+			if err != nil || len(game.LegalMoves()) == 0 {
+				fmt.Println("bestmove (none)")
+				continue
+			}
+			move := game.LegalMoves()[0]
+			fmt.Printf("info depth 1 score cp %s pv %s\n", os.Getenv("GO_CHESS_FAKE_SCORE"), move)
+			fmt.Printf("bestmove %s\n", move)
 		case command == "quit":
 			return
 		}
@@ -216,18 +233,18 @@ func TestAnalyzeErrors(t *testing.T) {
 }
 
 func TestPlayQuitsOnExit(t *testing.T) {
-	code, out, _ := run(t, "n\ne2e4\nexit\n", "play")
+	code, out, _ := run(t, "e2e4\nexit\n", "play")
 	if code != 0 || !strings.Contains(out, "Exiting game.") {
 		t.Errorf("exit %d, output %q", code, out)
 	}
 	// With no command at all the game starts too.
-	if code, out, _ := run(t, "n\nquit\n"); code != 0 || !strings.Contains(out, "Starting Go Chess Engine") {
+	if code, out, _ := run(t, "quit\n"); code != 0 || !strings.Contains(out, "Starting Go Chess Engine") {
 		t.Errorf("exit %d, output %q", code, out)
 	}
 }
 
 func TestPlayAcceptsSANAndExplainsRejectedMoves(t *testing.T) {
-	input := strings.Join([]string{"n", "e4", "e5", "Nf6", "hello", "e2e4", "g8g5", "Nf3", "exit"}, "\n") + "\n"
+	input := strings.Join([]string{"e4", "e5", "Nf6", "hello", "e2e4", "g8g5", "Nf3", "exit"}, "\n") + "\n"
 	code, out, _ := run(t, input, "play")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
@@ -244,10 +261,16 @@ func TestPlayAcceptsSANAndExplainsRejectedMoves(t *testing.T) {
 	}
 }
 
-// play runs a game from the scripted lines (after declining the timer).
+// play runs an untimed game from the scripted lines.
 func play(t *testing.T, lines ...string) string {
 	t.Helper()
-	code, out, errOut := run(t, "n\n"+strings.Join(lines, "\n")+"\n", "play")
+	return playWith(t, nil, lines...)
+}
+
+// playWith is play with extra flags.
+func playWith(t *testing.T, flags []string, lines ...string) string {
+	t.Helper()
+	code, out, errOut := run(t, strings.Join(lines, "\n")+"\n", append([]string{"play"}, flags...)...)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
@@ -313,5 +336,123 @@ func TestPlayDrawIsAnsweredByTheOpponent(t *testing.T) {
 	out = play(t, "draw", "decline", "accept", "exit")
 	if !strings.Contains(out, "Draw offer declined.") || !strings.Contains(out, "Error: cannot accept a draw") {
 		t.Errorf("decline:\n%s", out)
+	}
+}
+
+func TestParseTimeControl(t *testing.T) {
+	good := map[string]string{"5+3": "300+3", "10": "600", "90+30": "5400+30", "0.5+0": "30"}
+	for text, want := range good {
+		config, err := parseTimeControl(text)
+		if err != nil {
+			t.Errorf("%q: %v", text, err)
+			continue
+		}
+		if got := formatTimeControl(config); got != want {
+			t.Errorf("%q: formatted %q, want %q", text, got, want)
+		}
+	}
+	for _, text := range []string{"", "x", "0", "-5", "5+", "5+x", "5+-1", "+3"} {
+		if _, err := parseTimeControl(text); err == nil {
+			t.Errorf("%q: expected an error", text)
+		}
+	}
+}
+
+func TestPlayFlagsStartFromFENAndTimeControl(t *testing.T) {
+	out := playWith(t, []string{"--fen", "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1", "--time", "5+3"}, "e4", "fen", "exit")
+	if !strings.Contains(out, "4k3/8/8/8/4P3/8/8/4K3 b - e3 0 1") {
+		t.Errorf("did not play from the FEN:\n%s", out)
+	}
+	if !strings.Contains(out, "White: 05:") || !strings.Contains(out, "Black: 05:00") {
+		t.Errorf("no clocks:\n%s", out)
+	}
+}
+
+func TestPlayFlagErrors(t *testing.T) {
+	for _, args := range [][]string{
+		{"play", "--time", "soon"},
+		{"play", "--level", "5"},
+		{"play", "--color", "black"},
+		{"play", "--engine", "x", "--level", "99"},
+		{"play", "--engine", "x", "--color", "red"},
+		{"play", "extra"},
+	} {
+		if code, _, _ := run(t, "", args...); code != 2 {
+			t.Errorf("%v: exit %d, want 2", args, code)
+		}
+	}
+	if code, _, _ := run(t, "", "play", "--fen", "junk"); code != 1 {
+		t.Errorf("bad FEN: exit %d, want 1", code)
+	}
+	if code, _, _ := run(t, "", "play", "--engine", "/nonexistent/engine"); code != 1 {
+		t.Errorf("missing engine: exit %d, want 1", code)
+	}
+	// Colors and symbols are accepted flags.
+	if code, _, _ := run(t, "exit\n", "play", "--no-color", "--ascii"); code != 0 {
+		t.Errorf("--no-color --ascii: exit %d", code)
+	}
+}
+
+func engineFlags(extra ...string) []string {
+	return append([]string{"--engine", os.Args[0]}, extra...)
+}
+
+func TestPlayAgainstEngine(t *testing.T) {
+	t.Setenv("GO_CHESS_FAKE_UCI", "2")
+	out := playWith(t, engineFlags("--level", "3"), "e4", "pgn", "exit")
+	if !strings.Contains(out, "Playing against FakeFish as White.") || !strings.Contains(out, "Engine plays") {
+		t.Errorf("no engine reply:\n%s", out)
+	}
+	if !strings.Contains(out, `[White "Player"]`) || !strings.Contains(out, `[Black "FakeFish"]`) {
+		t.Errorf("PGN names:\n%s", out)
+	}
+}
+
+func TestPlayAgainstEngineAsBlack(t *testing.T) {
+	t.Setenv("GO_CHESS_FAKE_UCI", "2")
+	out := playWith(t, engineFlags("--color", "black"), "undo", "exit")
+	if strings.Index(out, "Engine plays") > strings.Index(out, "Enter a move") {
+		t.Errorf("the engine, as White, must move before the first prompt:\n%s", out)
+	}
+	if !strings.Contains(out, "h g f e d c b a") {
+		t.Errorf("board should face Black:\n%s", out)
+	}
+	if !strings.Contains(out, "the engine has made the only move so far") {
+		t.Errorf("undo must not take back only the engine's move:\n%s", out)
+	}
+}
+
+func TestUndoAgainstEngineTakesBackBothMoves(t *testing.T) {
+	t.Setenv("GO_CHESS_FAKE_UCI", "2")
+	out := playWith(t, engineFlags(), "e4", "undo", "fen", "exit")
+	if !strings.Contains(out, "RNBQKBNR w KQkq - 0 1\n") {
+		t.Errorf("undo did not restore the start:\n%s", out)
+	}
+}
+
+func TestDrawOfferToEngine(t *testing.T) {
+	t.Setenv("GO_CHESS_FAKE_UCI", "2")
+	t.Setenv("GO_CHESS_FAKE_SCORE", "0")
+	out := playWith(t, engineFlags(), "draw")
+	if !strings.Contains(out, "Engine accepts the draw.") || !strings.Contains(out, "Result: 1/2-1/2") {
+		t.Errorf("equal position:\n%s", out)
+	}
+	// The score is for the side to move (the player); +300 means the engine is worse.
+	t.Setenv("GO_CHESS_FAKE_SCORE", "300")
+	if out := playWith(t, engineFlags(), "draw"); !strings.Contains(out, "Engine accepts the draw.") {
+		t.Errorf("player ahead, the engine should accept:\n%s", out)
+	}
+	t.Setenv("GO_CHESS_FAKE_SCORE", "-300")
+	out = playWith(t, engineFlags(), "draw", "exit")
+	if !strings.Contains(out, "Engine declines the draw.") || strings.Contains(out, "Game over") {
+		t.Errorf("engine ahead should decline:\n%s", out)
+	}
+}
+
+func TestResignAgainstEngine(t *testing.T) {
+	t.Setenv("GO_CHESS_FAKE_UCI", "2")
+	out := playWith(t, engineFlags("--color", "black"), "resign")
+	if !strings.Contains(out, "Black resigned") || !strings.Contains(out, "Result: 1-0") {
+		t.Errorf("output:\n%s", out)
 	}
 }
