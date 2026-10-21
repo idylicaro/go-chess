@@ -28,7 +28,7 @@ func BenchmarkSearch(b *testing.B) {
 			board := boardFromFEN(b, fen)
 			var nodes int64
 			for range b.N {
-				nodes = New(eval.Evaluate).Search(context.Background(), board, Limits{Depth: benchmarkDepth}, nil).Nodes
+				nodes = New(eval.Evaluate, Options{}).Search(context.Background(), board, Limits{Depth: benchmarkDepth}, nil).Nodes
 			}
 			b.ReportMetric(float64(nodes), "nodes")
 			b.ReportMetric(float64(nodes)*float64(b.N)/b.Elapsed().Seconds(), "nodes/s")

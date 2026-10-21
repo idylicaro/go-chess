@@ -37,19 +37,35 @@ type Result struct {
 	PV    []chess.SearchMove
 }
 
-// Searcher runs searches with one evaluation function. Run one search at a
+// Options configure a Searcher; the zero value uses the defaults.
+type Options struct {
+	HashMB int // transposition table size; 0 means DefaultHashMB
+}
+
+// Searcher runs searches with one evaluation function and keeps its
+// transposition table from one search to the next. Run one search at a
 // time; Search may be called again for the next move.
 type Searcher struct {
 	evaluate Evaluator
+	tt       *transpositionTable
 	now      func() time.Time
 }
 
 // New returns a Searcher that scores leaves with evaluate.
 //
-//	searcher := search.New(eval.Evaluate)
+//	searcher := search.New(eval.Evaluate, search.Options{HashMB: 64})
 //	result := searcher.Search(ctx, board, search.Limits{Depth: 6}, nil)
-func New(evaluate Evaluator) *Searcher {
-	return &Searcher{evaluate: evaluate, now: time.Now}
+func New(evaluate Evaluator, options Options) *Searcher {
+	hashMB := options.HashMB
+	if hashMB <= 0 {
+		hashMB = DefaultHashMB
+	}
+	return &Searcher{evaluate: evaluate, tt: newTranspositionTable(hashMB), now: time.Now}
+}
+
+// Clear forgets what earlier searches learned, for a new game.
+func (s *Searcher) Clear() {
+	s.tt.clear()
 }
 
 // Search looks for the best move on board, which it leaves as it found it.
@@ -57,7 +73,7 @@ func New(evaluate Evaluator) *Searcher {
 func (s *Searcher) Search(ctx context.Context, board *chess.SearchBoard, limits Limits, report func(Info)) Result {
 	start := s.now()
 	stop := newStopper(ctx, limits.Nodes)
-	w := newWorker(board.Clone(), s.evaluate, stop)
+	w := newWorker(board.Clone(), s.evaluate, stop, s.tt)
 	var result Result
 	for depth := 1; depth <= maxDepth(limits); depth++ {
 		score := w.negamax(depth, 0, -infinity, infinity)

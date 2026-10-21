@@ -22,7 +22,7 @@ const (
 )
 
 func TestSearch_FindsMateInOne(t *testing.T) {
-	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, scholarsMateFEN), Limits{Depth: 3}, nil)
+	result := New(eval.Evaluate, Options{}).Search(context.Background(), boardFromFEN(t, scholarsMateFEN), Limits{Depth: 3}, nil)
 	if result.Best.String() != "h5f7" {
 		t.Errorf("best move = %s, want h5f7 (Qxf7#)", result.Best)
 	}
@@ -32,21 +32,21 @@ func TestSearch_FindsMateInOne(t *testing.T) {
 }
 
 func TestSearch_FindsMateInTwo(t *testing.T) {
-	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, rookMateInTwoFEN), Limits{Depth: 5}, nil)
+	result := New(eval.Evaluate, Options{}).Search(context.Background(), boardFromFEN(t, rookMateInTwoFEN), Limits{Depth: 5}, nil)
 	if moves, ok := MateInMoves(result.Score); !ok || moves != 2 {
 		t.Errorf("score %d reads as mate %d (%v), want mate 2", result.Score, moves, ok)
 	}
 }
 
 func TestSearch_TakesAHangingQueen(t *testing.T) {
-	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, hangingQueenFEN), Limits{Depth: 3}, nil)
+	result := New(eval.Evaluate, Options{}).Search(context.Background(), boardFromFEN(t, hangingQueenFEN), Limits{Depth: 3}, nil)
 	if result.Best.String() != "e4d5" {
 		t.Errorf("best move = %s, want e4d5", result.Best)
 	}
 }
 
 func TestSearch_NoLegalMoveGivesANullBest(t *testing.T) {
-	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, stalemateFEN), Limits{Depth: 4}, nil)
+	result := New(eval.Evaluate, Options{}).Search(context.Background(), boardFromFEN(t, stalemateFEN), Limits{Depth: 4}, nil)
 	if !result.Best.IsNull() || result.Score != drawScore {
 		t.Errorf("stalemate: best %s score %d, want the null move and %d", result.Best, result.Score, drawScore)
 	}
@@ -55,7 +55,7 @@ func TestSearch_NoLegalMoveGivesANullBest(t *testing.T) {
 func TestSearch_LeavesTheBoardAsItFoundIt(t *testing.T) {
 	board := boardFromFEN(t, kiwipeteFEN)
 	before := board.FEN()
-	New(eval.Evaluate).Search(context.Background(), board, Limits{Depth: 3}, nil)
+	New(eval.Evaluate, Options{}).Search(context.Background(), board, Limits{Depth: 3}, nil)
 	if after := board.FEN(); after != before {
 		t.Errorf("board changed from %q to %q", before, after)
 	}
@@ -64,7 +64,7 @@ func TestSearch_LeavesTheBoardAsItFoundIt(t *testing.T) {
 func TestSearch_ReportsEveryDepthUpToTheLimit(t *testing.T) {
 	var depths []int
 	report := func(info Info) { depths = append(depths, info.Depth) }
-	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, chess.StartingFEN), Limits{Depth: 4}, report)
+	result := New(eval.Evaluate, Options{}).Search(context.Background(), boardFromFEN(t, chess.StartingFEN), Limits{Depth: 4}, report)
 	if len(depths) != 4 || depths[3] != 4 || result.Depth != 4 {
 		t.Errorf("reported depths %v, result depth %d, want 1..4", depths, result.Depth)
 	}
@@ -72,7 +72,7 @@ func TestSearch_ReportsEveryDepthUpToTheLimit(t *testing.T) {
 
 func TestSearch_PrincipalVariationIsPlayable(t *testing.T) {
 	board := boardFromFEN(t, kiwipeteFEN)
-	result := New(eval.Evaluate).Search(context.Background(), board, Limits{Depth: 4}, nil)
+	result := New(eval.Evaluate, Options{}).Search(context.Background(), board, Limits{Depth: 4}, nil)
 	if len(result.PV) == 0 || result.PV[0] != result.Best {
 		t.Fatalf("PV %v does not start with the best move %s", result.PV, result.Best)
 	}
@@ -84,7 +84,7 @@ func TestSearch_PrincipalVariationIsPlayable(t *testing.T) {
 }
 
 func TestSearch_StopsAtTheNodeLimit(t *testing.T) {
-	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, kiwipeteFEN), Limits{Nodes: 20000}, nil)
+	result := New(eval.Evaluate, Options{}).Search(context.Background(), boardFromFEN(t, kiwipeteFEN), Limits{Nodes: 20000}, nil)
 	if result.Best.IsNull() || result.Nodes > 20000+2*pollInterval {
 		t.Errorf("node-limited search: best %s after %d nodes, want a move within about 20000", result.Best, result.Nodes)
 	}
@@ -93,7 +93,7 @@ func TestSearch_StopsAtTheNodeLimit(t *testing.T) {
 func TestSearch_CancelledContextStillReturnsAMove(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	result := New(eval.Evaluate).Search(ctx, boardFromFEN(t, kiwipeteFEN), Limits{}, nil)
+	result := New(eval.Evaluate, Options{}).Search(ctx, boardFromFEN(t, kiwipeteFEN), Limits{}, nil)
 	if result.Best.IsNull() || result.Depth != 1 {
 		t.Errorf("cancelled search: best %s at depth %d, want a depth-1 move", result.Best, result.Depth)
 	}
@@ -111,7 +111,7 @@ func TestSearch_ScoresARepetitionAsADraw(t *testing.T) {
 		t.Fatal("no repetition expected yet")
 	}
 	playUCI(t, board, "f6g8")
-	w := newWorker(board, eval.Evaluate, newStopper(context.Background(), 0))
+	w := newTestWorker(board)
 	if score := w.negamax(2, 1, -infinity, infinity); score != drawScore {
 		t.Errorf("negamax in a repeated position = %d, want %d", score, drawScore)
 	}
@@ -123,7 +123,7 @@ func TestNegamax_MatchesPlainMinimax(t *testing.T) {
 	for _, fen := range []string{chess.StartingFEN, scholarsMateFEN, hangingQueenFEN, benchmarkFENs["endgame"]} {
 		board := boardFromFEN(t, fen)
 		want := minimax(board, 2, 0)
-		w := newWorker(board, eval.Evaluate, newStopper(context.Background(), 0))
+		w := newTestWorker(board)
 		if got := w.negamax(2, 0, -infinity, infinity); got != want {
 			t.Errorf("%q: negamax(2) = %d, minimax(2) = %d", fen, got, want)
 		}
@@ -137,7 +137,7 @@ func minimax(board *chess.SearchBoard, depth, ply int) int {
 		return drawScore
 	}
 	if depth == 0 {
-		return newWorker(board, eval.Evaluate, newStopper(context.Background(), 0)).quiesce(ply, -infinity, infinity)
+		return newTestWorker(board).quiesce(ply, -infinity, infinity)
 	}
 	var buffer [chess.MaxSearchMoves]chess.SearchMove
 	best, legalMoves := -infinity, 0
@@ -199,4 +199,10 @@ func playUCI(t testing.TB, board *chess.SearchBoard, moves ...string) {
 			t.Fatalf("move %s is not legal in %q", notation, board.FEN())
 		}
 	}
+}
+
+// newTestWorker searches board with the real evaluation, no limits and a
+// small table of its own.
+func newTestWorker(board *chess.SearchBoard) *worker {
+	return newWorker(board, eval.Evaluate, newStopper(context.Background(), 0), newTranspositionTable(1))
 }

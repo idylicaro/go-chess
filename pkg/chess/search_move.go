@@ -40,3 +40,17 @@ func (m SearchMove) String() string {
 func (m SearchMove) Move() Move {
 	return m.toUCI()
 }
+
+// Pack fits the move in 16 bits, for an engine's transposition table:
+// six bits each for the squares and three for the promotion.
+//
+//	chess.UnpackSearchMove(move.Pack()) == move // always true
+func (m SearchMove) Pack() uint16 {
+	return uint16(m.from) | uint16(m.to)<<6 | uint16(m.promotion)<<12
+}
+
+// UnpackSearchMove is the inverse of Pack. The move it returns is only as
+// legal as the one packed: compare it with generated moves before playing.
+func UnpackSearchMove(packed uint16) SearchMove {
+	return SearchMove{from: int8(packed & 63), to: int8(packed >> 6 & 63), promotion: PieceType(packed >> 12 & 7)}
+}

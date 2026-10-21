@@ -191,3 +191,13 @@ func playSearchMove(t *testing.T, board *SearchBoard, notation string) {
 		t.Fatalf("move %s is illegal in %q", notation, board.FEN())
 	}
 }
+
+func TestSearchMove_PackRoundTrips(t *testing.T) {
+	board := NewSearchBoard(mustParseFEN(t, "1n2k3/P7/8/3pP3/8/8/8/4K3 w - d6 0 1"))
+	var buffer [MaxSearchMoves]SearchMove
+	for _, move := range append(board.GenerateMoves(buffer[:0]), NullSearchMove) {
+		if got := UnpackSearchMove(move.Pack()); got != move {
+			t.Errorf("UnpackSearchMove(%s.Pack()) = %s", move, got)
+		}
+	}
+}

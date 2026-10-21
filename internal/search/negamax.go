@@ -12,6 +12,7 @@ type worker struct {
 	board    *chess.SearchBoard
 	evaluate Evaluator
 	stop     *stopper
+	tt       *transpositionTable
 	pv       pvTable
 	order    moveOrderer
 	// rootBest is the previous iteration's best move, searched first.
@@ -22,8 +23,8 @@ type worker struct {
 	canStop bool
 }
 
-func newWorker(board *chess.SearchBoard, evaluate Evaluator, stop *stopper) *worker {
-	return &worker{board: board, evaluate: evaluate, stop: stop}
+func newWorker(board *chess.SearchBoard, evaluate Evaluator, stop *stopper, tt *transpositionTable) *worker {
+	return &worker{board: board, evaluate: evaluate, stop: stop, tt: tt}
 }
 
 // visit counts a node and reports whether the search must unwind.
@@ -33,6 +34,12 @@ func (w *worker) visit() bool {
 		w.stop.addNodes(w.unflushed)
 		w.unflushed = 0
 	}
+	return w.unwinding()
+}
+
+// unwinding is true once the search was stopped: scores from here on are
+// meaningless and must not be stored or used.
+func (w *worker) unwinding() bool {
 	return w.canStop && w.stop.isStopped()
 }
 
@@ -59,7 +66,21 @@ func (w *worker) negamax(depth, ply, alpha, beta int) int {
 	if depth <= 0 {
 		return w.quiesce(ply, alpha, beta)
 	}
-	return w.searchMoves(depth, ply, alpha, beta)
+	entry, found := w.tt.probe(w.board.Hash())
+	if score, settled := entry.cutoffScore(depth, ply, alpha, beta); found && settled && ply > 0 {
+		return score
+	}
+	score, best := w.searchMoves(depth, ply, alpha, beta, entry.move)
+	w.storeResult(depth, ply, score, best, boundFor(score, alpha, beta))
+	return score
+}
+
+// storeResult records a finished node in the transposition table.
+func (w *worker) storeResult(depth, ply, score int, best chess.SearchMove, kind bound) {
+	if w.unwinding() {
+		return
+	}
+	w.tt.store(w.board.Hash(), ttEntry{move: best, score: scoreToTT(score, ply), depth: depth, bound: kind})
 }
 
 // isDraw catches repetitions and the fifty-move rule inside the tree.
@@ -68,11 +89,12 @@ func (w *worker) isDraw() bool {
 }
 
 // searchMoves tries every legal move, best first, and scores mate or
-// stalemate when there is none.
-func (w *worker) searchMoves(depth, ply, alpha, beta int) int {
+// stalemate when there is none. It returns the score and the best move:
+// the one that raised alpha, or ttMove when none did.
+func (w *worker) searchMoves(depth, ply, alpha, beta int, ttMove chess.SearchMove) (int, chess.SearchMove) {
 	var buffer [chess.MaxSearchMoves]chess.SearchMove
-	picker := w.order.newMovePicker(w.board, w.board.GenerateMoves(buffer[:0]), w.hashMove(ply), ply)
-	best, legalMoves := -infinity, 0
+	picker := w.order.newMovePicker(w.board, w.board.GenerateMoves(buffer[:0]), w.hashMove(ply, ttMove), ply)
+	best, bestMove, legalMoves := -infinity, ttMove, 0
 	for move, ok := picker.pick(); ok; move, ok = picker.pick() {
 		score, legal := w.searchChild(move, depth, ply, alpha, beta)
 		if !legal {
@@ -81,7 +103,7 @@ func (w *worker) searchMoves(depth, ply, alpha, beta int) int {
 		legalMoves++
 		best = max(best, score)
 		if score > alpha {
-			alpha = score
+			alpha, bestMove = score, move
 			w.pv.update(ply, move)
 		}
 		if alpha >= beta {
@@ -90,17 +112,18 @@ func (w *worker) searchMoves(depth, ply, alpha, beta int) int {
 		}
 	}
 	if legalMoves == 0 {
-		return w.noMoveScore(ply)
+		return w.noMoveScore(ply), chess.NullSearchMove
 	}
-	return best
+	return best, bestMove
 }
 
-// hashMove is the move to try first at ply.
-func (w *worker) hashMove(ply int) chess.SearchMove {
-	if ply == 0 {
+// hashMove is the move to try first at ply: the previous iteration's best
+// at the root, the transposition table's elsewhere.
+func (w *worker) hashMove(ply int, ttMove chess.SearchMove) chess.SearchMove {
+	if ply == 0 && !w.rootBest.IsNull() {
 		return w.rootBest
 	}
-	return chess.NullSearchMove
+	return ttMove
 }
 
 // recordCutoff feeds the killers and history; captures are already
