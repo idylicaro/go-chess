@@ -3,14 +3,19 @@ package uciserver
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/idylicaro/go-chess/internal/book"
 	"github.com/idylicaro/go-chess/internal/engine"
 	"github.com/idylicaro/go-chess/internal/eval"
 	"github.com/idylicaro/go-chess/internal/search"
+	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
 // replyTimeout bounds every wait for a reply, so a broken server fails the
@@ -242,4 +247,31 @@ func TestServer_PruningOptionsReachTheSearcher(t *testing.T) {
 	if got := built[len(built)-1]; got.Pruning != (search.Pruning{Futility: true}) || got.Threads != 4 {
 		t.Errorf("options after setoption = %+v, want only Futility and 4 threads", got)
 	}
+}
+
+func TestServer_PlaysFromTheOpeningBook(t *testing.T) {
+	// A one-entry book: 1.e4 from the starting position.
+	data := binary.BigEndian.AppendUint64(nil, book.Key(chess.NewSearchBoard(chess.NewGame())))
+	data = binary.BigEndian.AppendUint16(data, 4|3<<3|4<<6|1<<9) // e2e4
+	data = binary.BigEndian.AppendUint16(data, 1)
+	data = binary.BigEndian.AppendUint32(data, 0)
+	path := filepath.Join(t.TempDir(), "tiny.bin")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	session := startSession(t)
+	session.send("setoption name BookFile value " + path)
+	session.send("setoption name OwnBook value true")
+	session.send("position startpos")
+	session.send("go wtime 60000 btime 60000")
+	if best, before := session.expect("bestmove"); best != "bestmove e2e4" || len(before) != 0 {
+		t.Errorf("got %q after %q, want bestmove e2e4 at once", best, before)
+	}
+	session.send("position startpos moves e2e4")
+	session.send("go depth 1")
+	if _, before := session.expect("bestmove"); len(before) == 0 {
+		t.Error("out of book the engine did not search")
+	}
+	session.send("setoption name BookFile value /no/such/book.bin")
+	session.expect("info string setoption: BookFile")
 }

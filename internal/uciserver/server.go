@@ -9,9 +9,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"strings"
 	"sync"
 
+	"github.com/idylicaro/go-chess/internal/book"
 	"github.com/idylicaro/go-chess/internal/search"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
@@ -35,6 +37,9 @@ type Server struct {
 	options     search.Options
 	searcher    *search.Searcher
 	board       *chess.SearchBoard // the position "go" searches
+	openingBook *book.Book         // nil until BookFile is set
+	ownBook     bool               // play book moves without searching
+	randomInt   func(n int) int    // picks among weighted book moves
 	running     *runningSearch     // the last search started; nil before the first
 }
 
@@ -71,6 +76,7 @@ func New(identity Identity, out io.Writer, newSearcher SearcherFactory) *Server 
 		options:     options,
 		searcher:    newSearcher(options),
 		board:       chess.NewSearchBoard(chess.NewGame()),
+		randomInt:   rand.IntN,
 	}
 }
 

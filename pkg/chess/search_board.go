@@ -70,6 +70,21 @@ func (b *SearchBoard) HalfMoveClock() int {
 	return b.game.halfMoveClock
 }
 
+// CastlingRights are the castles still available.
+func (b *SearchBoard) CastlingRights() CastlingRights {
+	return b.game.castlingRights
+}
+
+// EnPassantSquare is the square a pawn skipped on the last move, if any,
+// whether or not a pawn can take there (as in FEN).
+func (b *SearchBoard) EnPassantSquare() (square int, ok bool) {
+	target := b.game.enPassantTarget
+	if target == nil {
+		return 0, false
+	}
+	return squareIndex(target.X, target.Y), true
+}
+
 // FEN describes the position. The move number is not kept across null moves.
 func (b *SearchBoard) FEN() string {
 	return b.game.FEN()

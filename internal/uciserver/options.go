@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/idylicaro/go-chess/internal/book"
 	"github.com/idylicaro/go-chess/internal/search"
 )
 
@@ -21,6 +22,8 @@ var optionDeclarations = []string{
 	fmt.Sprintf("option name Hash type spin default 16 min %d max %d", minHashMB, maxHashMB),
 	"option name Clear Hash type button",
 	fmt.Sprintf("option name Threads type spin default 1 min 1 max %d", maxThreads),
+	"option name OwnBook type check default false",
+	"option name BookFile type string default <empty>",
 	"option name NullMove type check default true",
 	"option name LMR type check default true",
 	"option name Futility type check default true",
@@ -48,13 +51,17 @@ func (s *Server) handleSetOption(_ context.Context, args []string) error {
 		return s.setHash(value)
 	case key == "threads":
 		return s.setThreads(value)
+	case key == "ownbook":
+		return s.setOwnBook(value)
+	case key == "bookfile":
+		return s.setBookFile(value)
 	case key == "clear hash":
 		s.searcher.Clear()
 		return nil
 	case pruningSwitches[key] != nil:
 		return s.setPruning(pruningSwitches[key], value)
 	}
-	return fmt.Errorf("setoption: unknown option %q, expected Hash, Clear Hash, Threads, NullMove, LMR or Futility", name)
+	return fmt.Errorf("setoption: unknown option %q, expected Hash, Clear Hash, Threads, OwnBook, BookFile, NullMove, LMR or Futility", name)
 }
 
 // setPruning turns a technique on or off; it rebuilds the searcher, which
@@ -97,5 +104,28 @@ func (s *Server) setThreads(value string) error {
 	}
 	s.options.Threads = threads
 	s.searcher = s.newSearcher(s.options)
+	return nil
+}
+
+func (s *Server) setOwnBook(value string) error {
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return fmt.Errorf("setoption: OwnBook %q, expected true or false", value)
+	}
+	s.ownBook = enabled
+	return nil
+}
+
+// setBookFile loads a Polyglot book (lab #46); "<empty>" or "" unloads it.
+func (s *Server) setBookFile(path string) error {
+	if path == "" || path == "<empty>" {
+		s.openingBook = nil
+		return nil
+	}
+	opening, err := book.Open(path)
+	if err != nil {
+		return fmt.Errorf("setoption: BookFile: %w", err)
+	}
+	s.openingBook = opening
 	return nil
 }

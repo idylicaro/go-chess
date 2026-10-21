@@ -28,8 +28,21 @@ func (s *Server) handleGo(ctx context.Context, args []string) error {
 	if len(ignored) > 0 {
 		s.out.printf("info string go: ignoring %q, expected depth, nodes, movetime, wtime, btime, winc, binc, movestogo, infinite or ponder", strings.Join(ignored, " "))
 	}
+	if move, ok := s.bookMove(request); ok {
+		s.out.printf("bestmove %s", move)
+		return nil
+	}
 	s.startSearch(ctx, request)
 	return nil
+}
+
+// bookMove is a move from the opening book, when OwnBook is on and the
+// position is in it. "go infinite" is analysis, so it always searches.
+func (s *Server) bookMove(request goRequest) (string, bool) {
+	if !s.ownBook || s.openingBook == nil || request.waitForStop {
+		return "", false
+	}
+	return s.openingBook.Pick(s.board, s.randomInt)
 }
 
 func (s *Server) startSearch(ctx context.Context, request goRequest) {

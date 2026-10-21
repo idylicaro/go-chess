@@ -201,3 +201,17 @@ func TestSearchMove_PackRoundTrips(t *testing.T) {
 		}
 	}
 }
+
+func TestSearchBoard_CastlingRightsAndEnPassantSquare(t *testing.T) {
+	board := NewSearchBoard(mustParseFEN(t, "r3k2r/8/8/3pP3/8/8/8/R3K2R w Kq d6 0 1"))
+	if got := board.CastlingRights(); got != WhiteKingSide|BlackQueenSide {
+		t.Errorf("CastlingRights = %v, want K and q", got)
+	}
+	if square, ok := board.EnPassantSquare(); !ok || square != 19 {
+		t.Errorf("EnPassantSquare = %d, %v, want 19 (d6)", square, ok)
+	}
+	playSearchMove(t, board, "e1e2")
+	if _, ok := board.EnPassantSquare(); ok || board.CastlingRights() != BlackQueenSide {
+		t.Errorf("after Ke2: en passant %v, rights %v, want none and q", ok, board.CastlingRights())
+	}
+}
