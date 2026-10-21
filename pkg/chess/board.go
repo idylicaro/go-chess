@@ -5,11 +5,14 @@ import (
 	"github.com/idylicaro/go-chess/internal/common"
 )
 
+// Position is a square as zero-based column X (a=0) and row Y (rank 1=0).
 type Position struct {
 	X int
 	Y int
 }
 
+// IBoard is the board a Game plays on. Game.GetBoard returns it for display;
+// mutating it directly bypasses the rules and corrupts the game (see docs/API.md).
 type IBoard interface {
 	GetPiece(x, y int) (IPiece, error)
 	MovePiece(fromX, fromY, toX, toY int) error
@@ -26,19 +29,23 @@ type IBoard interface {
 	Copy() IBoard
 }
 
+// Board is the 8x8 implementation of IBoard.
 type Board struct {
 	board   [8][8]IPiece
 	kingPos map[common.Color]Position
 }
 
+// SetKingPosition records where the king of color stands.
 func (b *Board) SetKingPosition(color common.Color, x, y int) {
 	b.kingPos[color] = Position{X: x, Y: y}
 }
 
+// GetKingPosition returns the column and row of the king of color.
 func (b *Board) GetKingPosition(color common.Color) (int, int) {
 	return b.kingPos[color].X, b.kingPos[color].Y
 }
 
+// MovePiece moves the piece on (fromX, fromY) to (toX, toY), capturing any piece there.
 func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 	err := b.IsValidCoordinates(fromX, fromY)
 	if err != nil {
@@ -73,7 +80,7 @@ func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 	return nil
 }
 
-func NewInitialBoard() IBoard {
+func newInitialBoard() IBoard {
 	// Setup initial positions for all pieces
 	initialBoard := &Board{
 		board:   [8][8]IPiece{},
@@ -81,34 +88,34 @@ func NewInitialBoard() IBoard {
 	}
 	// Pawn setup
 	for i := 0; i < 8; i++ {
-		initialBoard.board[i][6] = NewPawn(common.White)
-		initialBoard.board[i][1] = NewPawn(common.Black)
+		initialBoard.board[i][6] = newPawn(common.White)
+		initialBoard.board[i][1] = newPawn(common.Black)
 	}
 	// Rook setup
-	initialBoard.board[0][7] = NewRook(common.White)
-	initialBoard.board[7][7] = NewRook(common.White)
-	initialBoard.board[0][0] = NewRook(common.Black)
-	initialBoard.board[7][0] = NewRook(common.Black)
+	initialBoard.board[0][7] = newRook(common.White)
+	initialBoard.board[7][7] = newRook(common.White)
+	initialBoard.board[0][0] = newRook(common.Black)
+	initialBoard.board[7][0] = newRook(common.Black)
 
 	// Knight setup
-	initialBoard.board[1][7] = NewKnight(common.White)
-	initialBoard.board[6][7] = NewKnight(common.White)
-	initialBoard.board[1][0] = NewKnight(common.Black)
-	initialBoard.board[6][0] = NewKnight(common.Black)
+	initialBoard.board[1][7] = newKnight(common.White)
+	initialBoard.board[6][7] = newKnight(common.White)
+	initialBoard.board[1][0] = newKnight(common.Black)
+	initialBoard.board[6][0] = newKnight(common.Black)
 
 	// Bishop setup
-	initialBoard.board[2][7] = NewBishop(common.White)
-	initialBoard.board[5][7] = NewBishop(common.White)
-	initialBoard.board[2][0] = NewBishop(common.Black)
-	initialBoard.board[5][0] = NewBishop(common.Black)
+	initialBoard.board[2][7] = newBishop(common.White)
+	initialBoard.board[5][7] = newBishop(common.White)
+	initialBoard.board[2][0] = newBishop(common.Black)
+	initialBoard.board[5][0] = newBishop(common.Black)
 
 	// Queen setup
-	initialBoard.board[3][7] = NewQueen(common.White)
-	initialBoard.board[3][0] = NewQueen(common.Black)
+	initialBoard.board[3][7] = newQueen(common.White)
+	initialBoard.board[3][0] = newQueen(common.Black)
 
 	// King setup
-	initialBoard.board[4][7] = NewKing(common.White)
-	initialBoard.board[4][0] = NewKing(common.Black)
+	initialBoard.board[4][7] = newKing(common.White)
+	initialBoard.board[4][0] = newKing(common.Black)
 	initialBoard.kingPos[common.White] = Position{X: 4, Y: 7}
 	initialBoard.kingPos[common.Black] = Position{X: 4, Y: 0}
 
@@ -116,6 +123,7 @@ func NewInitialBoard() IBoard {
 	return initialBoard
 }
 
+// RemovePiece empties the square (x, y).
 func (b *Board) RemovePiece(x int, y int) error {
 	err := b.IsValidCoordinates(x, y)
 	if err != nil {
@@ -125,7 +133,7 @@ func (b *Board) RemovePiece(x int, y int) error {
 	return nil
 }
 
-func NewBoard(board *[8][8]IPiece) IBoard {
+func newBoard(board *[8][8]IPiece) IBoard {
 	if board == nil {
 		return &Board{
 			board:   [8][8]IPiece{},
@@ -138,6 +146,7 @@ func NewBoard(board *[8][8]IPiece) IBoard {
 	}
 }
 
+// GetPiece returns the piece on (x, y), or nil for an empty square.
 func (b *Board) GetPiece(x, y int) (IPiece, error) {
 	err := b.IsValidCoordinates(x, y)
 	if err != nil {
@@ -147,6 +156,7 @@ func (b *Board) GetPiece(x, y int) (IPiece, error) {
 	return b.board[x][y], nil
 }
 
+// AddPiece places piece on an empty square and fails if it is occupied.
 func (b *Board) AddPiece(piece IPiece, x, y int) error {
 	err := b.IsValidCoordinates(x, y)
 	if err != nil {
@@ -161,6 +171,7 @@ func (b *Board) AddPiece(piece IPiece, x, y int) error {
 	return nil
 }
 
+// SetPiece places piece on (x, y), replacing whatever stands there.
 func (b *Board) SetPiece(piece IPiece, x, y int) error {
 	err := b.IsValidCoordinates(x, y)
 	if err != nil {
@@ -171,6 +182,7 @@ func (b *Board) SetPiece(piece IPiece, x, y int) error {
 	return nil
 }
 
+// IsValidCoordinates returns an error unless (x, y) is inside the board.
 func (b *Board) IsValidCoordinates(x, y int) error {
 	if x < 0 || x > 7 || y < 0 || y > 7 {
 		return fmt.Errorf("invalid coordinates (%d, %d): expected both between 0 and 7", x, y)

@@ -69,7 +69,7 @@ func parseFENPlacement(placement string) (IBoard, error) {
 	if len(ranks) != 8 {
 		return nil, fmt.Errorf("piece placement %q has %d ranks, expected 8 separated by '/'", placement, len(ranks))
 	}
-	board := NewBoard(nil)
+	board := newBoard(nil)
 	for row, rank := range ranks {
 		if err := placeFENRank(board, row, rank); err != nil {
 			return nil, err
@@ -178,7 +178,7 @@ func parseFENEnPassant(field string, sideToMove common.Color) (*Position, error)
 	if sideToMove == common.Black {
 		expectedRank = '3'
 	}
-	x, y, err := (&CoordinateConverter{}).FromAlgebraic(field)
+	x, y, err := (&coordinateConverter{}).FromAlgebraic(field)
 	if err != nil || field[1] != expectedRank {
 		return nil, fmt.Errorf("en passant square %q, expected \"-\" or a square on rank %c", field, expectedRank)
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 func TestCoordinateConverter_GetPieceSymbol(t *testing.T) {
-	cc := &CoordinateConverter{}
+	cc := &coordinateConverter{}
 
 	tests := []struct {
 		name      string

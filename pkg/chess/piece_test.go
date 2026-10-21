@@ -16,7 +16,7 @@ func emptyBoard() *Board {
 func TestPawnTable(t *testing.T) {
 	tests := []struct {
 		name      string
-		piece     *Pawn
+		piece     *pawnPiece
 		pos       Position
 		setup     func(board *Board)
 		enPassant *Position
@@ -24,7 +24,7 @@ func TestPawnTable(t *testing.T) {
 	}{
 		{
 			name:      "Initial double move",
-			piece:     NewPawn(common.White),
+			piece:     newPawn(common.White),
 			pos:       Position{X: 4, Y: 6},
 			setup:     func(board *Board) {},
 			enPassant: nil,
@@ -32,54 +32,54 @@ func TestPawnTable(t *testing.T) {
 		},
 		{
 			name:  "White Attack left",
-			piece: NewPawn(common.White),
+			piece: newPawn(common.White),
 			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
-				board.board[3][3] = NewPawn(common.Black)
-				board.board[5][3] = NewPawn(common.White)
+				board.board[3][3] = newPawn(common.Black)
+				board.board[5][3] = newPawn(common.White)
 			},
 			enPassant: nil,
 			expected:  []Position{{X: 4, Y: 3}, {X: 3, Y: 3}},
 		},
 		{
 			name:  "White Attack right",
-			piece: NewPawn(common.White),
+			piece: newPawn(common.White),
 			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
-				board.board[3][3] = NewPawn(common.White)
-				board.board[5][3] = NewPawn(common.Black)
+				board.board[3][3] = newPawn(common.White)
+				board.board[5][3] = newPawn(common.Black)
 			},
 			enPassant: nil,
 			expected:  []Position{{X: 4, Y: 3}, {X: 5, Y: 3}},
 		},
 		{
 			name:  "Black Attack Left",
-			piece: NewPawn(common.Black),
+			piece: newPawn(common.Black),
 			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
-				board.board[3][5] = NewPawn(common.White)
-				board.board[5][5] = NewPawn(common.Black)
+				board.board[3][5] = newPawn(common.White)
+				board.board[5][5] = newPawn(common.Black)
 			},
 			enPassant: nil,
 			expected:  []Position{{X: 4, Y: 5}, {X: 3, Y: 5}},
 		},
 		{
 			name:  "Black Attack right",
-			piece: NewPawn(common.Black),
+			piece: newPawn(common.Black),
 			pos:   Position{X: 4, Y: 4},
 			setup: func(board *Board) {
-				board.board[3][5] = NewPawn(common.Black)
-				board.board[5][5] = NewPawn(common.White)
+				board.board[3][5] = newPawn(common.Black)
+				board.board[5][5] = newPawn(common.White)
 			},
 			enPassant: nil,
 			expected:  []Position{{X: 4, Y: 5}, {X: 5, Y: 5}},
 		},
 		{
 			name:  "En passant",
-			piece: NewPawn(common.White),
+			piece: newPawn(common.White),
 			pos:   Position{X: 4, Y: 3},
 			setup: func(board *Board) {
-				board.board[5][3] = NewPawn(common.Black)
+				board.board[5][3] = newPawn(common.Black)
 			},
 			enPassant: &Position{X: 5, Y: 2},
 			expected:  []Position{{X: 4, Y: 2}, {X: 5, Y: 2}},
@@ -101,7 +101,7 @@ func TestPawnTable(t *testing.T) {
 
 func TestKnightEmptyBoard(t *testing.T) {
 	board := emptyBoard()
-	knight := NewKnight(common.White)
+	knight := newKnight(common.White)
 	board.board[4][4] = knight
 
 	moves := knight.GetValidMoves(4, 4, board)
@@ -128,11 +128,11 @@ func TestKnightEmptyBoard(t *testing.T) {
 
 func TestKnightBlockedByOwnPiece(t *testing.T) {
 	board := emptyBoard()
-	knight := NewKnight(common.White)
+	knight := newKnight(common.White)
 	board.board[4][4] = knight
 	// Block some moves with own pieces
-	board.board[3][2] = NewPawn(common.White)
-	board.board[5][2] = NewPawn(common.White)
+	board.board[3][2] = newPawn(common.White)
+	board.board[5][2] = newPawn(common.White)
 
 	moves := knight.GetValidMoves(4, 4, board)
 	expected := []Position{
@@ -158,10 +158,10 @@ func TestKnightBlockedByOwnPiece(t *testing.T) {
 
 func TestKnightCanCaptureEnemy(t *testing.T) {
 	board := emptyBoard()
-	knight := NewKnight(common.White)
+	knight := newKnight(common.White)
 	board.board[4][4] = knight
-	board.board[3][2] = NewPawn(common.Black)
-	board.board[5][2] = NewPawn(common.Black)
+	board.board[3][2] = newPawn(common.Black)
+	board.board[5][2] = newPawn(common.Black)
 
 	moves := knight.GetValidMoves(4, 4, board)
 	expected := []Position{
@@ -184,7 +184,7 @@ func TestKnightCanCaptureEnemy(t *testing.T) {
 
 func TestBishopEmptyBoard(t *testing.T) {
 	board := emptyBoard()
-	bishop := NewBishop(common.White)
+	bishop := newBishop(common.White)
 	board.board[4][4] = bishop
 
 	moves := bishop.GetValidMoves(4, 4, board)
@@ -195,11 +195,11 @@ func TestBishopEmptyBoard(t *testing.T) {
 
 func TestBishopBlockedByOwnPiece(t *testing.T) {
 	board := emptyBoard()
-	bishop := NewBishop(common.White)
+	bishop := newBishop(common.White)
 	board.board[4][4] = bishop
 	// Block some moves with own pieces
-	board.board[3][3] = NewPawn(common.White)
-	board.board[5][3] = NewPawn(common.White)
+	board.board[3][3] = newPawn(common.White)
+	board.board[5][3] = newPawn(common.White)
 
 	moves := bishop.GetValidMoves(4, 4, board)
 	expected := []Position{
@@ -223,10 +223,10 @@ func TestBishopBlockedByOwnPiece(t *testing.T) {
 }
 func TestBishopCanCaptureEnemy(t *testing.T) {
 	board := emptyBoard()
-	bishop := NewBishop(common.White)
+	bishop := newBishop(common.White)
 	board.board[4][4] = bishop
-	board.board[3][3] = NewPawn(common.Black)
-	board.board[5][3] = NewPawn(common.Black)
+	board.board[3][3] = newPawn(common.Black)
+	board.board[5][3] = newPawn(common.Black)
 
 	moves := bishop.GetValidMoves(4, 4, board)
 	expected := []Position{
@@ -248,7 +248,7 @@ func TestBishopCanCaptureEnemy(t *testing.T) {
 
 func TestRookMovesEmptyBoard(t *testing.T) {
 	board := emptyBoard()
-	rook := NewRook(common.White)
+	rook := newRook(common.White)
 	board.board[4][4] = rook
 
 	moves := rook.GetValidMoves(4, 4, board)
@@ -259,11 +259,11 @@ func TestRookMovesEmptyBoard(t *testing.T) {
 
 func TestRookBlockedByOwnPiece(t *testing.T) {
 	board := emptyBoard()
-	rook := NewRook(common.White)
+	rook := newRook(common.White)
 	board.board[4][4] = rook
 	// Block some moves with own pieces
-	board.board[4][3] = NewPawn(common.White)
-	board.board[4][5] = NewPawn(common.White)
+	board.board[4][3] = newPawn(common.White)
+	board.board[4][5] = newPawn(common.White)
 
 	moves := rook.GetValidMoves(4, 4, board)
 	expected := []Position{
@@ -288,10 +288,10 @@ func TestRookBlockedByOwnPiece(t *testing.T) {
 
 func TestRookCanCaptureEnemy(t *testing.T) {
 	board := emptyBoard()
-	rook := NewRook(common.White)
+	rook := newRook(common.White)
 	board.board[4][4] = rook
-	board.board[3][4] = NewPawn(common.Black)
-	board.board[5][4] = NewPawn(common.Black)
+	board.board[3][4] = newPawn(common.Black)
+	board.board[5][4] = newPawn(common.Black)
 
 	moves := rook.GetValidMoves(4, 4, board)
 	expected := []Position{
@@ -313,7 +313,7 @@ func TestRookCanCaptureEnemy(t *testing.T) {
 
 func TestQueenMoves(t *testing.T) {
 	board := emptyBoard()
-	queen := NewQueen(common.White)
+	queen := newQueen(common.White)
 	board.board[4][4] = queen
 
 	moves := queen.GetValidMoves(4, 4, board)
@@ -324,7 +324,7 @@ func TestQueenMoves(t *testing.T) {
 
 func TestKingMoves(t *testing.T) {
 	board := emptyBoard()
-	king := NewKing(common.White)
+	king := newKing(common.White)
 	board.board[4][4] = king
 
 	moves := king.GetValidMoves(4, 4, board)

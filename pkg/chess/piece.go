@@ -4,6 +4,7 @@ import (
 	"github.com/idylicaro/go-chess/internal/common"
 )
 
+// IPiece is a piece on the board.
 type IPiece interface {
 	GetColor() common.Color
 	GetType() common.PieceType
@@ -11,25 +12,28 @@ type IPiece interface {
 	Copy() IPiece
 }
 
+// Piece holds the color and type shared by every piece.
 type Piece struct {
 	Type  common.PieceType
 	Color common.Color
 }
 
+// GetColor returns the side the piece belongs to.
 func (p *Piece) GetColor() common.Color {
 	return p.Color
 }
 
+// GetType returns the kind of piece.
 func (p *Piece) GetType() common.PieceType {
 	return p.Type
 }
 
-type Pawn struct {
+type pawnPiece struct {
 	Piece
 }
 
-func NewPawn(color common.Color) *Pawn {
-	return &Pawn{
+func newPawn(color common.Color) *pawnPiece {
+	return &pawnPiece{
 		Piece: Piece{
 			Type:  common.Pawn,
 			Color: color,
@@ -37,8 +41,8 @@ func NewPawn(color common.Color) *Pawn {
 	}
 }
 
-func (p *Pawn) Copy() IPiece {
-	return &Pawn{
+func (p *pawnPiece) Copy() IPiece {
+	return &pawnPiece{
 		Piece: Piece{
 			Type:  p.Type,
 			Color: p.Color,
@@ -46,12 +50,12 @@ func (p *Pawn) Copy() IPiece {
 	}
 }
 
-func (p *Pawn) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+func (p *pawnPiece) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	// Calls the specialized method without enPassant
 	return p.GetValidMovesWithEnPassant(fromX, fromY, board, nil)
 }
 
-func (p *Pawn) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPassantTarget *Position) []Position {
+func (p *pawnPiece) GetValidMovesWithEnPassant(fromX, fromY int, board IBoard, enPassantTarget *Position) []Position {
 	// 3 - has avaliable enemy piece to attack ?
 	validMoves := []Position{}
 	var direction int
@@ -129,12 +133,12 @@ func pawnHomeRow(color common.Color) int {
 	return 1
 }
 
-type Knight struct {
+type knightPiece struct {
 	Piece
 }
 
-func NewKnight(color common.Color) *Knight {
-	return &Knight{
+func newKnight(color common.Color) *knightPiece {
+	return &knightPiece{
 		Piece: Piece{
 			Type:  common.Knight,
 			Color: color,
@@ -142,8 +146,8 @@ func NewKnight(color common.Color) *Knight {
 	}
 }
 
-func (k *Knight) Copy() IPiece {
-	return &Knight{
+func (k *knightPiece) Copy() IPiece {
+	return &knightPiece{
 		Piece: Piece{
 			Type:  k.Type,
 			Color: k.Color,
@@ -151,7 +155,7 @@ func (k *Knight) Copy() IPiece {
 	}
 }
 
-func (k *Knight) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+func (k *knightPiece) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	knightMoves := [][]int{
 		{-2, -1}, {-1, -2}, {1, -2}, {2, -1},
@@ -172,12 +176,12 @@ func (k *Knight) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	return validMoves
 }
 
-type Bishop struct {
+type bishopPiece struct {
 	Piece
 }
 
-func NewBishop(color common.Color) *Bishop {
-	return &Bishop{
+func newBishop(color common.Color) *bishopPiece {
+	return &bishopPiece{
 		Piece: Piece{
 			Type:  common.Bishop,
 			Color: color,
@@ -185,8 +189,8 @@ func NewBishop(color common.Color) *Bishop {
 	}
 }
 
-func (b *Bishop) Copy() IPiece {
-	return &Bishop{
+func (b *bishopPiece) Copy() IPiece {
+	return &bishopPiece{
 		Piece: Piece{
 			Type:  b.Type,
 			Color: b.Color,
@@ -194,7 +198,7 @@ func (b *Bishop) Copy() IPiece {
 	}
 }
 
-func (bi *Bishop) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+func (bi *bishopPiece) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	// Bishop moves in 4 diagonal directions
 	directions := [][]int{
@@ -233,12 +237,12 @@ func (bi *Bishop) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	return validMoves
 }
 
-type Rook struct {
+type rookPiece struct {
 	Piece
 }
 
-func NewRook(color common.Color) *Rook {
-	return &Rook{
+func newRook(color common.Color) *rookPiece {
+	return &rookPiece{
 		Piece: Piece{
 			Type:  common.Rook,
 			Color: color,
@@ -246,8 +250,8 @@ func NewRook(color common.Color) *Rook {
 	}
 }
 
-func (r *Rook) Copy() IPiece {
-	return &Rook{
+func (r *rookPiece) Copy() IPiece {
+	return &rookPiece{
 		Piece: Piece{
 			Type:  r.Type,
 			Color: r.Color,
@@ -255,7 +259,7 @@ func (r *Rook) Copy() IPiece {
 	}
 }
 
-func (r *Rook) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+func (r *rookPiece) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	// Rook moves in 4 straight directions
 	directions := [][]int{
@@ -293,12 +297,12 @@ func (r *Rook) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	return validMoves
 }
 
-type Queen struct {
+type queenPiece struct {
 	Piece
 }
 
-func NewQueen(color common.Color) *Queen {
-	return &Queen{
+func newQueen(color common.Color) *queenPiece {
+	return &queenPiece{
 		Piece: Piece{
 			Type:  common.Queen,
 			Color: color,
@@ -306,8 +310,8 @@ func NewQueen(color common.Color) *Queen {
 	}
 }
 
-func (q *Queen) Copy() IPiece {
-	return &Queen{
+func (q *queenPiece) Copy() IPiece {
+	return &queenPiece{
 		Piece: Piece{
 			Type:  q.Type,
 			Color: q.Color,
@@ -315,7 +319,7 @@ func (q *Queen) Copy() IPiece {
 	}
 }
 
-func (q *Queen) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+func (q *queenPiece) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	// Queen moves in 8 directions (combination of Rook and Bishop)
 	directions := [][]int{
@@ -357,12 +361,12 @@ func (q *Queen) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	return validMoves
 }
 
-type King struct {
+type kingPiece struct {
 	Piece
 }
 
-func NewKing(color common.Color) *King {
-	return &King{
+func newKing(color common.Color) *kingPiece {
+	return &kingPiece{
 		Piece: Piece{
 			Type:  common.King,
 			Color: color,
@@ -370,8 +374,8 @@ func NewKing(color common.Color) *King {
 	}
 }
 
-func (k *King) Copy() IPiece {
-	return &King{
+func (k *kingPiece) Copy() IPiece {
+	return &kingPiece{
 		Piece: Piece{
 			Type:  k.Type,
 			Color: k.Color,
@@ -379,7 +383,7 @@ func (k *King) Copy() IPiece {
 	}
 }
 
-func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
+func (k *kingPiece) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 	validMoves := []Position{}
 	// King moves in 8 possible directions
 	directions := [][]int{
@@ -423,16 +427,16 @@ func (k *King) GetValidMoves(fromX, fromY int, board IBoard) []Position {
 func newPiece(pieceType common.PieceType, color common.Color) IPiece {
 	switch pieceType {
 	case common.Pawn:
-		return NewPawn(color)
+		return newPawn(color)
 	case common.Knight:
-		return NewKnight(color)
+		return newKnight(color)
 	case common.Bishop:
-		return NewBishop(color)
+		return newBishop(color)
 	case common.Rook:
-		return NewRook(color)
+		return newRook(color)
 	case common.Queen:
-		return NewQueen(color)
+		return newQueen(color)
 	default:
-		return NewKing(color)
+		return newKing(color)
 	}
 }

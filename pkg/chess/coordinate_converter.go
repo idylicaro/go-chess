@@ -5,13 +5,13 @@ import (
 	"github.com/idylicaro/go-chess/internal/common"
 )
 
-// CoordinateConverter handles conversion between different coordinate systems
-type CoordinateConverter struct{}
+// coordinateConverter handles conversion between different coordinate systems
+type coordinateConverter struct{}
 
 // ToAlgebraic converts internal coordinates (0-7, 0-7) to algebraic notation (a1-h8)
 // Internal board: (0,0) = top-left, (7,7) = bottom-right
 // Algebraic: a1 = bottom-left, h8 = top-right
-func (cc *CoordinateConverter) ToAlgebraic(x, y int) (string, error) {
+func (cc *coordinateConverter) ToAlgebraic(x, y int) (string, error) {
 	if x < 0 || x > 7 || y < 0 || y > 7 {
 		return "", fmt.Errorf("invalid coordinates (%d, %d): expected both between 0 and 7", x, y)
 	}
@@ -26,7 +26,7 @@ func (cc *CoordinateConverter) ToAlgebraic(x, y int) (string, error) {
 }
 
 // FromAlgebraic converts algebraic notation (e.g., "e4") to internal coordinates
-func (cc *CoordinateConverter) FromAlgebraic(square string) (x, y int, err error) {
+func (cc *coordinateConverter) FromAlgebraic(square string) (x, y int, err error) {
 	if len(square) != 2 {
 		return 0, 0, fmt.Errorf("invalid square %q: expected a file a-h and a rank 1-8, like \"e4\"", square)
 	}
@@ -51,7 +51,7 @@ func (cc *CoordinateConverter) FromAlgebraic(square string) (x, y int, err error
 
 // GetPieceSymbol returns the algebraic symbol for a piece type
 // Pawn = "" (no symbol), Knight = "N", Bishop = "B", etc.
-func (cc *CoordinateConverter) GetPieceSymbol(pieceType common.PieceType) string {
+func (cc *coordinateConverter) GetPieceSymbol(pieceType common.PieceType) string {
 	switch pieceType {
 	case common.Pawn:
 		return ""

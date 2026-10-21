@@ -9,8 +9,8 @@ import (
 // algebraic square (e.g. "e1"). Both kings must be present.
 func newGameFromSquares(t *testing.T, pieces map[string]IPiece) *Game {
 	t.Helper()
-	board := NewBoard(nil)
-	converter := &CoordinateConverter{}
+	board := newBoard(nil)
+	converter := &coordinateConverter{}
 	for square, piece := range pieces {
 		x, y, err := converter.FromAlgebraic(square)
 		if err != nil {
@@ -36,74 +36,74 @@ func TestIsInsufficientMaterial(t *testing.T) {
 	}{
 		{
 			name:   "only kings",
-			pieces: map[string]IPiece{"e1": NewKing(common.White), "e8": NewKing(common.Black)},
+			pieces: map[string]IPiece{"e1": newKing(common.White), "e8": newKing(common.Black)},
 			want:   true,
 		},
 		{
 			name: "king and bishop vs king",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black), "c1": NewBishop(common.White),
+				"e1": newKing(common.White), "e8": newKing(common.Black), "c1": newBishop(common.White),
 			},
 			want: true,
 		},
 		{
 			name: "king and knight vs king",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black), "g8": NewKnight(common.Black),
+				"e1": newKing(common.White), "e8": newKing(common.Black), "g8": newKnight(common.Black),
 			},
 			want: true,
 		},
 		{
 			name: "bishops on same square color, one per side",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black),
-				"c1": NewBishop(common.White), "f8": NewBishop(common.Black), // both dark squares
+				"e1": newKing(common.White), "e8": newKing(common.Black),
+				"c1": newBishop(common.White), "f8": newBishop(common.Black), // both dark squares
 			},
 			want: true,
 		},
 		{
 			name: "bishops on opposite square colors, one per side",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black),
-				"c1": NewBishop(common.White), "c8": NewBishop(common.Black), // dark vs light
+				"e1": newKing(common.White), "e8": newKing(common.Black),
+				"c1": newBishop(common.White), "c8": newBishop(common.Black), // dark vs light
 			},
 			want: false,
 		},
 		{
 			name: "two bishops on opposite colors, same side",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black),
-				"c1": NewBishop(common.White), "f1": NewBishop(common.White),
+				"e1": newKing(common.White), "e8": newKing(common.Black),
+				"c1": newBishop(common.White), "f1": newBishop(common.White),
 			},
 			want: false,
 		},
 		{
 			name: "two bishops on same color, same side",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black),
-				"c1": NewBishop(common.White), "e3": NewBishop(common.White),
+				"e1": newKing(common.White), "e8": newKing(common.Black),
+				"c1": newBishop(common.White), "e3": newBishop(common.White),
 			},
 			want: true,
 		},
 		{
 			name: "two knights vs king",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black),
-				"b1": NewKnight(common.White), "g1": NewKnight(common.White),
+				"e1": newKing(common.White), "e8": newKing(common.Black),
+				"b1": newKnight(common.White), "g1": newKnight(common.White),
 			},
 			want: false,
 		},
 		{
 			name: "king and pawn vs king",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black), "e2": NewPawn(common.White),
+				"e1": newKing(common.White), "e8": newKing(common.Black), "e2": newPawn(common.White),
 			},
 			want: false,
 		},
 		{
 			name: "king and rook vs king",
 			pieces: map[string]IPiece{
-				"e1": NewKing(common.White), "e8": NewKing(common.Black), "a1": NewRook(common.White),
+				"e1": newKing(common.White), "e8": newKing(common.Black), "a1": newRook(common.White),
 			},
 			want: false,
 		},

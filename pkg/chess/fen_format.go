@@ -84,7 +84,7 @@ func formatFENEnPassant(target *Position) string {
 	if target == nil {
 		return "-"
 	}
-	square, err := (&CoordinateConverter{}).ToAlgebraic(target.X, target.Y)
+	square, err := (&coordinateConverter{}).ToAlgebraic(target.X, target.Y)
 	if err != nil {
 		panic(fmt.Sprintf("en passant target %v is off the board: %v", *target, err))
 	}
