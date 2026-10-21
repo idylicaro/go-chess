@@ -612,3 +612,16 @@ func TestPGNCommandShowsTheMovesInThePanel(t *testing.T) {
 		t.Errorf("output:\n%s", out)
 	}
 }
+
+func TestTUIRequiresATerminal(t *testing.T) {
+	code, _, errOut := run(t, "", "tui")
+	if code != 1 || !strings.Contains(errOut, "needs a terminal") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+	if code, _, _ := run(t, "", "tui", "--fen", "junk"); code != 1 {
+		t.Errorf("bad FEN: exit %d", code)
+	}
+	if code, _, _ := run(t, "", "tui", "extra"); code != 2 {
+		t.Errorf("extra argument: exit %d", code)
+	}
+}

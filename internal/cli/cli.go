@@ -39,6 +39,7 @@ type command struct {
 // commands lists the subcommands in help order.
 var commands = []command{
 	{"play", "play a game in the terminal", runPlay},
+	{"tui", "play in a full-screen terminal interface", runTUI},
 	{"analyze", "ask a UCI engine to analyze a position", runAnalyze},
 	{"perft", "count the leaf nodes of the move tree", runPerft},
 	{"fen", "check a FEN and show its position", runFEN},

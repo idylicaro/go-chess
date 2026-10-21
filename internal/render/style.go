@@ -26,12 +26,13 @@ func DetectStyle(w io.Writer, getenv func(string) string) Style {
 	term := getenv("TERM")
 	forced := getenv("CLICOLOR_FORCE") != "" && getenv("CLICOLOR_FORCE") != "0"
 	return Style{
-		Color:   getenv("NO_COLOR") == "" && term != "dumb" && (isTerminal(w) || forced),
+		Color:   getenv("NO_COLOR") == "" && term != "dumb" && (IsTerminal(w) || forced),
 		Unicode: term != "dumb" && term != "linux" && utf8Locale(getenv),
 	}
 }
 
-func isTerminal(w io.Writer) bool {
+// IsTerminal reports whether w is an interactive terminal.
+func IsTerminal(w io.Writer) bool {
 	f, ok := w.(*os.File)
 	if !ok {
 		return false
