@@ -65,9 +65,12 @@ func (s *Searcher) Search(ctx context.Context, board *chess.SearchBoard, limits 
 			break // an interrupted iteration is not trusted
 		}
 		result = Result{Score: score, Depth: depth, PV: w.pv.line()}
+		if len(result.PV) > 0 {
+			w.rootBest = result.PV[0]
+		}
 		reportIteration(report, Info{depth, score, w.totalNodes(), s.now().Sub(start), result.PV})
 		w.canStop = true
-		if stop.isStopped() || isMateScore(score) {
+		if stop.check() || isMateScore(score) {
 			break // depth 1 always completes, so there is a move to play
 		}
 	}

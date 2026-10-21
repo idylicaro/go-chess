@@ -26,13 +26,20 @@ func newStopper(ctx context.Context, nodeLimit int64) *stopper {
 
 // addNodes counts a worker's nodes and checks whether to stop.
 func (s *stopper) addNodes(count int64) {
-	total := s.nodes.Add(count)
-	if s.nodeLimit > 0 && total >= s.nodeLimit {
+	s.nodes.Add(count)
+	s.check()
+}
+
+// check stops the search once a limit is reached, and reports whether it
+// is stopped.
+func (s *stopper) check() bool {
+	if s.nodeLimit > 0 && s.nodes.Load() >= s.nodeLimit {
 		s.stop()
 	}
 	if s.ctx.Err() != nil {
 		s.stop()
 	}
+	return s.isStopped()
 }
 
 func (s *stopper) stop() {

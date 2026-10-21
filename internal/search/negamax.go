@@ -13,6 +13,9 @@ type worker struct {
 	evaluate Evaluator
 	stop     *stopper
 	pv       pvTable
+	order    moveOrderer
+	// rootBest is the previous iteration's best move, searched first.
+	rootBest chess.SearchMove
 	// unflushed counts nodes not yet added to the stopper.
 	unflushed int64
 	// canStop is false until depth 1 completes, so there is always a move.
@@ -61,12 +64,13 @@ func (w *worker) isDraw() bool {
 	return w.board.IsRepetition() || w.board.HalfMoveClock() >= fiftyMovePlies
 }
 
-// searchMoves tries every legal move and scores mate or stalemate when
-// there is none.
+// searchMoves tries every legal move, best first, and scores mate or
+// stalemate when there is none.
 func (w *worker) searchMoves(depth, ply, alpha, beta int) int {
 	var buffer [chess.MaxSearchMoves]chess.SearchMove
+	picker := w.order.newMovePicker(w.board, w.board.GenerateMoves(buffer[:0]), w.hashMove(ply), ply)
 	best, legalMoves := -infinity, 0
-	for _, move := range w.board.GenerateMoves(buffer[:0]) {
+	for move, ok := picker.pick(); ok; move, ok = picker.pick() {
 		score, legal := w.searchChild(move, depth, ply, alpha, beta)
 		if !legal {
 			continue
@@ -78,6 +82,7 @@ func (w *worker) searchMoves(depth, ply, alpha, beta int) int {
 			w.pv.update(ply, move)
 		}
 		if alpha >= beta {
+			w.recordCutoff(move, depth, ply)
 			break
 		}
 	}
@@ -85,6 +90,22 @@ func (w *worker) searchMoves(depth, ply, alpha, beta int) int {
 		return w.noMoveScore(ply)
 	}
 	return best
+}
+
+// hashMove is the move to try first at ply.
+func (w *worker) hashMove(ply int) chess.SearchMove {
+	if ply == 0 {
+		return w.rootBest
+	}
+	return chess.NullSearchMove
+}
+
+// recordCutoff feeds the killers and history; captures are already
+// ordered by MVV-LVA, so only quiet moves are learned.
+func (w *worker) recordCutoff(move chess.SearchMove, depth, ply int) {
+	if !w.board.IsCapture(move) && move.Promotion() == chess.Pawn {
+		w.order.recordCutoff(w.board.SideToMove(), move, depth, ply)
+	}
 }
 
 // searchChild plays move and scores the position after it, or returns
