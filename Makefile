@@ -2,10 +2,11 @@ BIN_DIR     := bin
 CLI_BIN     := $(BIN_DIR)/chess
 COVER_FILE  := coverage.out
 PKGS        := ./...
+PERFT_TEST  := go test -tags perft -run 'Perft' -v ./internal/chess
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build run test test-race test-short cover cover-html bench bench-report \
+.PHONY: help build run test test-race test-short perft perft-nocache cover cover-html bench bench-report \
         fmt fmt-check vet lint tidy check clean
 
 help: ## Lista os comandos disponíveis
@@ -30,6 +31,12 @@ test-race: ## Roda os testes com o detector de race
 
 test-short: ## Roda os testes pulando os marcados como longos (testing.Short)
 	go test -short $(PKGS)
+
+perft: ## Roda o perft completo nas posições de referência (lento; usa cache do go test)
+	$(PERFT_TEST)
+
+perft-nocache: ## Igual ao perft, mas ignora o cache e sempre executa de novo
+	$(PERFT_TEST) -count=1
 
 cover: ## Gera relatório de cobertura no terminal
 	go test -coverprofile=$(COVER_FILE) $(PKGS)

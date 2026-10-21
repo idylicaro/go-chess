@@ -151,3 +151,22 @@ func TestParsePromotion(t *testing.T) {
 		})
 	}
 }
+
+func TestMoveString_RoundTripsParseMove(t *testing.T) {
+	for _, notation := range []string{"e2e4", "a1h8", "h7g8", "b7b8q", "c2c1n", "e7e8r", "a7a8b"} {
+		move, err := ParseMove(notation)
+		if err != nil {
+			t.Fatalf("ParseMove(%q): %v", notation, err)
+		}
+		if got := move.String(); got != notation {
+			t.Errorf("ParseMove(%q).String() = %q", notation, got)
+		}
+	}
+}
+
+func TestMoveString_PromotionPieces(t *testing.T) {
+	move := Move{FromX: 0, FromY: 1, ToX: 0, ToY: 0, Promotion: common.Knight}
+	if got := move.String(); got != "a7a8n" {
+		t.Errorf("String() = %q, want %q", got, "a7a8n")
+	}
+}
