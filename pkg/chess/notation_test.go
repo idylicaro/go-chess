@@ -1,6 +1,7 @@
 package chess
 
 import (
+	"errors"
 	"github.com/idylicaro/go-chess/internal/common"
 	"strings"
 	"testing"
@@ -139,5 +140,29 @@ func TestIsSideToMoveInCheck(t *testing.T) {
 	game := mustParseFEN(t, "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1")
 	if !game.isSideToMoveInCheck() || game.currentTurn != common.White {
 		t.Error("white king attacked by rook on e2 not reported as check")
+	}
+}
+
+func TestMoveReadingErrorsCanBeTold(t *testing.T) {
+	game := NewGame()
+	_, malformedSAN := game.ParseSAN("hello")
+	_, malformedUCI := ParseMove("e2e9")
+	_, illegalSAN := game.ParseSAN("Nf6")
+	illegalUCI := game.Move(Move{FromX: 4, FromY: 6, ToX: 4, ToY: 2}) // e2e5
+	noPiece := game.Move(Move{FromX: 4, FromY: 4, ToX: 4, ToY: 3})    // e4e5
+	ambiguous := mustFEN(t, "4k3/8/8/8/8/8/4K3/R6R w - - 0 1")
+	_, ambiguousSAN := ambiguous.ParseSAN("Rd1")
+
+	for name, tt := range map[string]struct{ err, want error }{
+		"malformed SAN": {malformedSAN, ErrInvalidNotation},
+		"malformed UCI": {malformedUCI, ErrInvalidNotation},
+		"illegal SAN":   {illegalSAN, ErrIllegalMove},
+		"illegal UCI":   {illegalUCI, ErrIllegalMove},
+		"no piece":      {noPiece, ErrIllegalMove},
+		"ambiguous SAN": {ambiguousSAN, ErrAmbiguousMove},
+	} {
+		if !errors.Is(tt.err, tt.want) {
+			t.Errorf("%s: %v is not %v", name, tt.err, tt.want)
+		}
 	}
 }

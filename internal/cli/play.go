@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/idylicaro/go-chess/internal/moveinput"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
 func runPlay(e env, args []string) error {
-	fs := newFlagSet(e, "play", "[flags]", "Play a game in the terminal. Moves are typed in UCI notation (e2e4).")
+	fs := newFlagSet(e, "play", "[flags]", "Play a game in the terminal. Moves are typed in SAN (Nf3, exd5, O-O) or UCI (e2e4).")
 	rest, err := parseFlags(fs, args)
 	if err != nil {
 		return err
@@ -73,7 +74,7 @@ func runPlay(e env, args []string) error {
 		displayGameState(e.out, game)
 		displayBoard(e.out, game.GetBoard(), nil)
 
-		fmt.Fprintf(e.out, "> Enter a move, or resign|draw|accept|decline|undo|moves (%s): ", game.GetCurrentTurn().String())
+		fmt.Fprintf(e.out, "> Enter a move (SAN or UCI), or resign|draw|accept|decline|undo|moves (%s): ", game.GetCurrentTurn().String())
 		if !scanner.Scan() {
 			return nil
 		}
@@ -91,7 +92,7 @@ func runPlay(e env, args []string) error {
 			continue
 		}
 
-		move, err := chess.ParseMove(input)
+		move, err := moveinput.Parse(game, input)
 		if err != nil {
 			fmt.Fprintf(e.out, "Error: %v\n", err)
 			continue

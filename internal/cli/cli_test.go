@@ -225,3 +225,21 @@ func TestPlayQuitsOnExit(t *testing.T) {
 		t.Errorf("exit %d, output %q", code, out)
 	}
 }
+
+func TestPlayAcceptsSANAndExplainsRejectedMoves(t *testing.T) {
+	input := strings.Join([]string{"n", "e4", "e5", "Nf6", "hello", "e2e4", "g8g5", "Nf3", "exit"}, "\n") + "\n"
+	code, out, _ := run(t, input, "play")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	for _, want := range []string{
+		"Nf6 is not legal",           // knight cannot reach f6 for White
+		`"hello" is not a move`,      // malformed
+		"e2e4 is not legal",          // pawn already moved: no piece on e2
+		"the piece on g8 is Black's", // not your piece... after Nf3? White to move
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q", want)
+		}
+	}
+}

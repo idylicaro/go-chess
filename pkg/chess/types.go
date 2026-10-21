@@ -2,6 +2,7 @@ package chess
 
 import (
 	"errors"
+	"fmt"
 	"github.com/idylicaro/go-chess/internal/common"
 	"github.com/idylicaro/go-chess/internal/timer"
 	"github.com/idylicaro/go-chess/internal/uci"
@@ -44,11 +45,25 @@ var (
 //
 //	move, err := ParseMove("e7e8q")
 func ParseMove(uciMove string) (Move, error) {
-	return uci.ParseMove(uciMove)
+	move, err := uci.ParseMove(uciMove)
+	if err != nil {
+		return Move{}, fmt.Errorf("%w: %w", ErrInvalidNotation, err)
+	}
+	return move, nil
 }
 
 // ErrGameOver is returned (wrapped) by every action that needs a game in progress.
 var ErrGameOver = errors.New("game is over")
+
+// Errors from reading a move. ParseMove and ParseSAN wrap ErrInvalidNotation
+// when the text is not a move at all, ErrIllegalMove when it is a well-formed
+// move that is not legal in the position, and ErrAmbiguousMove when a SAN
+// string fits more than one legal move. Test for them with errors.Is.
+var (
+	ErrInvalidNotation = errors.New("invalid move notation")
+	ErrIllegalMove     = errors.New("illegal move")
+	ErrAmbiguousMove   = errors.New("ambiguous move")
+)
 
 // ErrNoMoveToUndo is returned by Undo when there is nothing to take back.
 var ErrNoMoveToUndo = errors.New("no move to undo")
