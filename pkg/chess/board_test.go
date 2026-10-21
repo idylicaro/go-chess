@@ -19,7 +19,7 @@ func TestBoard_AddPiece(t *testing.T) {
 	}{
 		{
 			name:         "Add pawn to empty square",
-			initialBoard: newBoard(nil).(*Board),
+			initialBoard: newBoard(),
 			pieceToAdd:   newPawn(common.White),
 			x:            0, y: 0,
 			expectedErr: nil,
@@ -28,9 +28,9 @@ func TestBoard_AddPiece(t *testing.T) {
 		{
 			name: "Add rook to occupied square",
 			initialBoard: func() *Board {
-				b := newBoard(nil)
+				b := newBoard()
 				_ = b.AddPiece(newPawn(common.White), 0, 0)
-				return b.(*Board)
+				return b
 			}(),
 			pieceToAdd: newRook(common.Black),
 			x:          0, y: 0,
@@ -39,7 +39,7 @@ func TestBoard_AddPiece(t *testing.T) {
 		},
 		{
 			name:         "Add piece to invalid coordinates",
-			initialBoard: newBoard(nil).(*Board),
+			initialBoard: newBoard(),
 			pieceToAdd:   newKing(common.White),
 			x:            -1, y: 0,
 			expectedErr: errors.New("invalid coordinates (-1, 0): expected both between 0 and 7"),
@@ -86,22 +86,22 @@ func TestBoard_RemovePiece(t *testing.T) {
 		{
 			name: "Remove pawn from occupied square",
 			initialBoard: func() *Board {
-				b := newBoard(nil)
+				b := newBoard()
 				_ = b.AddPiece(newPawn(common.White), 0, 0)
-				return b.(*Board)
+				return b
 			}(),
 			x: 0, y: 0,
 			expectedErr: nil,
 		},
 		{
 			name:         "Remove piece from empty square",
-			initialBoard: newBoard(nil).(*Board),
+			initialBoard: newBoard(),
 			x:            0, y: 0,
 			expectedErr: nil, // Should not error, just make sure it's nil
 		},
 		{
 			name:         "Remove piece from invalid coordinates",
-			initialBoard: newBoard(nil).(*Board),
+			initialBoard: newBoard(),
 			x:            -1, y: 0,
 			expectedErr: errors.New("invalid coordinates (-1, 0): expected both between 0 and 7"),
 		},
@@ -140,11 +140,11 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move Pawn to empty square",
 			initialBoard: func() *Board {
-				b := newBoard(nil)
+				b := newBoard()
 				_ = b.AddPiece(newPawn(common.White), 0, 6)
 				b.SetKingPosition(common.White, 4, 7) // Set king pos
 				b.SetKingPosition(common.Black, 4, 0)
-				return b.(*Board)
+				return b
 			}(),
 			fromX: 0, fromY: 6, toX: 0, toY: 5,
 			expectedErr: nil,
@@ -156,12 +156,12 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move Rook to capture opponent",
 			initialBoard: func() *Board {
-				b := newBoard(nil)
+				b := newBoard()
 				_ = b.AddPiece(newRook(common.White), 0, 7)
 				_ = b.AddPiece(newPawn(common.Black), 0, 5)
 				b.SetKingPosition(common.White, 4, 7) // Set king pos
 				b.SetKingPosition(common.Black, 4, 0)
-				return b.(*Board)
+				return b
 			}(),
 			fromX: 0, fromY: 7, toX: 0, toY: 5,
 			expectedErr: nil,
@@ -173,11 +173,11 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move King and update KingPosition",
 			initialBoard: func() *Board {
-				b := newBoard(nil)
+				b := newBoard()
 				_ = b.AddPiece(newKing(common.White), 4, 7)
 				b.SetKingPosition(common.White, 4, 7) // Initial king pos
 				b.SetKingPosition(common.Black, 4, 0)
-				return b.(*Board)
+				return b
 			}(),
 			fromX: 4, fromY: 7, toX: 4, toY: 6,
 			expectedErr: nil,
@@ -189,10 +189,10 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move from empty square",
 			initialBoard: func() *Board {
-				b := newBoard(nil)
+				b := newBoard()
 				b.SetKingPosition(common.White, 4, 7)
 				b.SetKingPosition(common.Black, 4, 0)
-				return b.(*Board)
+				return b
 			}(),
 			fromX: 0, fromY: 0, toX: 0, toY: 1,
 			expectedErr: errors.New("cannot move from (0, 0): there is no piece there"), // Customize if your GetPiece returns 'no piece found' error
@@ -204,11 +204,11 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move to invalid coordinates",
 			initialBoard: func() *Board {
-				b := newBoard(nil)
+				b := newBoard()
 				_ = b.AddPiece(newPawn(common.White), 0, 6)
 				b.SetKingPosition(common.White, 4, 7)
 				b.SetKingPosition(common.Black, 4, 0)
-				return b.(*Board)
+				return b
 			}(),
 			fromX: 0, fromY: 6, toX: 0, toY: 8, // Invalid Y coordinate
 			expectedErr: errors.New("invalid coordinates (0, 8): expected both between 0 and 7"),

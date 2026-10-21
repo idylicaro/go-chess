@@ -58,7 +58,8 @@ func (g *Game) childAfter(move uci.Move) *Game {
 // it is meant for search, not for continuing the original game.
 func (g *Game) clone() *Game {
 	child := *g
-	child.board = g.board.Copy()
+	board := *g.board
+	child.board = &board
 	child.gameTimer = nil
 	child.positionHistory = nil
 	child.moveHistory = nil

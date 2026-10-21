@@ -13,7 +13,7 @@ import (
 // and, optionally, a clock. Create one with NewGame, NewTimedGame or ParseFEN.
 // A Game is not safe for concurrent use.
 type Game struct {
-	board           IBoard
+	board           *Board
 	currentTurn     common.Color
 	state           GameState
 	enPassantTarget *Position
@@ -157,9 +157,7 @@ func (g *Game) Move(move uci.Move) error {
 
 	debugger := debug.NewChessDebugger()
 	debugger.LogGameState(g)
-	if boardFormatter, ok := g.board.(debug.BoardFormatter); ok {
-		debugger.LogBoard(boardFormatter)
-	}
+	debugger.LogBoard(g.board)
 
 	return nil
 }

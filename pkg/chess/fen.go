@@ -78,12 +78,12 @@ func gameFromFENFields(fields []string) (*Game, error) {
 
 // parseFENPlacement reads the eight ranks, from rank 8 (internal row 0) down
 // to rank 1 (row 7), and requires exactly one king per side.
-func parseFENPlacement(placement string) (IBoard, error) {
+func parseFENPlacement(placement string) (*Board, error) {
 	ranks := strings.Split(placement, "/")
 	if len(ranks) != 8 {
 		return nil, fmt.Errorf("piece placement %q has %d ranks, expected 8 separated by '/'", placement, len(ranks))
 	}
-	board := newBoard(nil)
+	board := newBoard()
 	for row, rank := range ranks {
 		if err := placeFENRank(board, row, rank); err != nil {
 			return nil, err

@@ -7,7 +7,7 @@ import (
 
 // gameSnapshot is everything Move changes, captured just before it does.
 type gameSnapshot struct {
-	board           IBoard
+	board           Board // a value: copying it is cheap (#12)
 	currentTurn     common.Color
 	state           GameState
 	drawReason      DrawReason
@@ -24,7 +24,7 @@ func (g *Game) snapshot() gameSnapshot {
 		history[position] = count
 	}
 	return gameSnapshot{
-		board:           g.board.Copy(),
+		board:           *g.board,
 		currentTurn:     g.currentTurn,
 		state:           g.state,
 		drawReason:      g.drawReason,
@@ -54,7 +54,8 @@ func (g *Game) Undo() error {
 	snapshot := g.undoStack[last]
 	g.undoStack = g.undoStack[:last]
 
-	g.board = snapshot.board
+	restored := snapshot.board
+	g.board = &restored
 	g.currentTurn = snapshot.currentTurn
 	g.state = snapshot.state
 	g.drawReason = snapshot.drawReason
