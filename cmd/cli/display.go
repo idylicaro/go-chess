@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/chess"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/pkg/chess"
 	"time"
 )
 
@@ -53,7 +53,11 @@ func DisplayGameState(game *chess.Game) {
 	case chess.Stalemate:
 		state = "Stalemate"
 	case chess.Draw:
-		state = "Draw"
+		state = "Draw (" + game.DrawReason().String() + ")"
+	case chess.ResignedWhite:
+		state = "White resigned - Black Wins"
+	case chess.ResignedBlack:
+		state = "Black resigned - White Wins"
 	case chess.TimeoutWhite:
 		state = "Timeout - Black Wins"
 	case chess.TimeoutBlack:

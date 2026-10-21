@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"idylicaro/go-chess/internal/timer"
 	"idylicaro/go-chess/internal/timer/timertest"
 )
@@ -127,5 +127,29 @@ func TestGameTimer_TimeoutCallbackCanUseTimer(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("timeout callback deadlocked calling GetRemainingTime")
+	}
+}
+
+func TestGameTimer_RewindReturnsTurnWithoutIncrement(t *testing.T) {
+	gt, clock := newTestTimer(10*time.Second, 2*time.Second)
+	gt.Start(common.White)
+	clock.Advance(time.Second)
+	gt.SwitchPlayer(common.Black)
+	clock.Advance(3 * time.Second)
+
+	gt.Rewind(common.White)
+
+	if got := gt.GetRemainingTime(common.White); got != 9*time.Second {
+		t.Errorf("White = %v, want 9s (10s - 1s spent, increment withdrawn)", got)
+	}
+	if got := gt.GetRemainingTime(common.Black); got != 7*time.Second {
+		t.Errorf("Black = %v, want 7s (time spent before the take-back is not returned)", got)
+	}
+	clock.Advance(time.Second)
+	if got := gt.GetRemainingTime(common.White); got != 8*time.Second {
+		t.Errorf("White = %v after 1s, want 8s: the clock should run for White again", got)
+	}
+	if got := gt.GetRemainingTime(common.Black); got != 7*time.Second {
+		t.Errorf("Black = %v, want 7s: its clock should be stopped", got)
 	}
 }

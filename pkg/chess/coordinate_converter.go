@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 )
 
 // CoordinateConverter handles conversion between different coordinate systems
@@ -13,7 +13,7 @@ type CoordinateConverter struct{}
 // Algebraic: a1 = bottom-left, h8 = top-right
 func (cc *CoordinateConverter) ToAlgebraic(x, y int) (string, error) {
 	if x < 0 || x > 7 || y < 0 || y > 7 {
-		return "", fmt.Errorf("invalid coordinates: (%d, %d)", x, y)
+		return "", fmt.Errorf("invalid coordinates (%d, %d): expected both between 0 and 7", x, y)
 	}
 
 	// Convert x to file (a-h)
@@ -28,7 +28,7 @@ func (cc *CoordinateConverter) ToAlgebraic(x, y int) (string, error) {
 // FromAlgebraic converts algebraic notation (e.g., "e4") to internal coordinates
 func (cc *CoordinateConverter) FromAlgebraic(square string) (x, y int, err error) {
 	if len(square) != 2 {
-		return 0, 0, fmt.Errorf("invalid square notation: %s", square)
+		return 0, 0, fmt.Errorf("invalid square %q: expected a file a-h and a rank 1-8, like \"e4\"", square)
 	}
 
 	file := square[0]
@@ -36,13 +36,13 @@ func (cc *CoordinateConverter) FromAlgebraic(square string) (x, y int, err error
 
 	// Convert file (a-h) to x coordinate (0-7)
 	if file < 'a' || file > 'h' {
-		return 0, 0, fmt.Errorf("invalid file: %c", file)
+		return 0, 0, fmt.Errorf("invalid file %q in square %q: expected a letter from a to h", file, square)
 	}
 	x = int(file - 'a')
 
 	// Convert rank (1-8) to y coordinate (7-0)
 	if rank < '1' || rank > '8' {
-		return 0, 0, fmt.Errorf("invalid rank: %c", rank)
+		return 0, 0, fmt.Errorf("invalid rank %q in square %q: expected a digit from 1 to 8", rank, square)
 	}
 	y = 8 - int(rank-'0')
 

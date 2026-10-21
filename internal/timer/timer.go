@@ -1,7 +1,7 @@
 package timer
 
 import (
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"sync"
 	"time"
 )
@@ -84,6 +84,21 @@ func (gt *GameTimer) handOver(newColor common.Color) (common.Color, bool, func(c
 	gt.activeColor = newColor
 	gt.turnStartedAt = gt.clock.Now()
 	return previousColor, flagged, gt.onTimeout
+}
+
+// Rewind hands the turn back to color after a taken-back move. The increment
+// credited to color for that move is withdrawn, but time already spent by
+// either side stays spent.
+//
+//	gt.SwitchPlayer(common.Black)
+//	gt.Rewind(common.White) // White moves again, without the increment
+func (gt *GameTimer) Rewind(color common.Color) {
+	gt.mu.Lock()
+	defer gt.mu.Unlock()
+	gt.chargeElapsedLocked()
+	gt.playerLocked(color).remaining -= gt.playerLocked(color).increment
+	gt.activeColor = color
+	gt.turnStartedAt = gt.clock.Now()
 }
 
 // GetRemainingTime returns color's time left, including the running turn.

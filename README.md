@@ -9,24 +9,22 @@ A chess engine written in Go. Implements board representation, piece logic, and 
 │   │    └── main.go
 │   └── cli/
 │       └── main.go
+├── pkg/
+│   └── chess/
+│       ├── board.go
+│       ├── piece.go
+│       ├── game.go
+│       └── outcome.go
 ├── internal/
-│   ├── chess/
-│   │   ├── board.go
-│   │   ├── piece.go
-│   │   ├── game.go
 │   ├── uci/
 │   │   └── protocol.go
 │   ├── common/
 │   │   └── piece.go
-├── debug/
-│   ├── debug.go
-│   └── chess.go
+│   ├── debug/
+│   │   ├── debug.go
+│   │   └── chess.go
 │   └── timer/
-│      └── timer.go
-├── pkg/
-    └── game_engine/
-        └── engine.go
-
+│       └── timer.go
 ```
 
 - **cmd/**  
@@ -38,15 +36,17 @@ A chess engine written in Go. Implements board representation, piece logic, and 
   - **cmd/cli/**  
      Command-line interface for interacting with the chess engine.
 
+- **pkg/chess/**  
+   The public, importable API (`idylicaro/go-chess/pkg/chess`). It re-exports the types it needs from `internal/` (`Color`, `Move`, `TimeConfig`, ...), so callers never import `internal/`.
+
+  - `board.go`: Board representation.
+  - `piece.go`: Piece definitions and properties.
+  - `game.go`: Game state management (turns, check, etc.).
+  - `outcome.go`: `Result()`, `DrawReason()`, `LegalMoves()`, resignation and draw offers.
+  - `undo.go`: `Undo()`.
+
 - **internal/**  
-   Core logic of the project, intended for internal use only and not meant to be imported by other projects.
-
-  - **internal/chess/**  
-     Implements the chess engine logic:
-
-    - `board.go`: Board representation.
-    - `piece.go`: Piece definitions and properties.
-    - `game.go`: Game state management (turns, check, etc.).
+   Supporting code, not meant to be imported by other projects.
 
   - **internal/common/**
     Handles common utilities and types used across the project.

@@ -2,7 +2,7 @@ BIN_DIR     := bin
 CLI_BIN     := $(BIN_DIR)/chess
 COVER_FILE  := coverage.out
 PKGS        := ./...
-PERFT_TEST  := go test -tags perft -run 'Perft' -v ./internal/chess
+PERFT_TEST  := go test -tags perft -run 'Perft' -v ./pkg/chess
 
 .DEFAULT_GOAL := help
 
@@ -46,7 +46,7 @@ cover-html: cover ## Abre a cobertura em HTML
 	go tool cover -html=$(COVER_FILE)
 
 bench: ## Roda os benchmarks do pacote chess
-	go test -run=^$$ -bench=. -benchmem ./internal/chess
+	go test -run=^$$ -bench=. -benchmem ./pkg/chess
 
 bench-report: ## Gera relatório HTML de benchmarks em .reports/
 	./scripts/benchmark.sh

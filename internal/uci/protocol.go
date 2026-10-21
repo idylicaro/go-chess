@@ -2,7 +2,7 @@ package uci
 
 import (
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 )
 
 type Move struct {
@@ -32,7 +32,7 @@ var promotionPieceMap = map[rune]common.PieceType{
 // A public function to convert a UCI string into a Move struct.
 func ParseMove(uciMove string) (Move, error) {
 	if len(uciMove) < 4 || len(uciMove) > 5 {
-		return Move{}, fmt.Errorf("invalid move: %s", uciMove)
+		return Move{}, fmt.Errorf("invalid UCI move %q: expected 4 characters like \"e2e4\", or 5 with a promotion like \"e7e8q\"", uciMove)
 	}
 
 	fromX, fromY, err := parseCoordinate(uciMove[:2])
@@ -54,7 +54,7 @@ func ParseMove(uciMove string) (Move, error) {
 	if len(uciMove) == 5 {
 		piece, ok := promotionPieceMap[rune(uciMove[4])]
 		if !ok {
-			return Move{}, fmt.Errorf("invalid promotion character: %q", uciMove[4])
+			return Move{}, fmt.Errorf("invalid promotion piece %q in %q: expected one of q, r, b, n", uciMove[4], uciMove)
 		}
 
 		// Only allow promotion for pawn moves to last rank
@@ -64,7 +64,7 @@ func ParseMove(uciMove string) (Move, error) {
 		isBlackPromotion := fromY == 6 && toY == 7
 
 		if !(isWhitePromotion || isBlackPromotion) {
-			return Move{}, fmt.Errorf("promotion only allowed for pawn moves to last rank")
+			return Move{}, fmt.Errorf("invalid move %q: a promotion piece is only allowed on a move to the last rank (e.g. \"e7e8q\")", uciMove)
 		}
 
 		move.Promotion = piece
@@ -80,17 +80,17 @@ func parseCoordinate(uciCoord string) (x, y int, err error) {
 	// 'e' is 101, '2' is 50. We use `rune()` for conversion and
 	// subtract '1' from the character value to get the matrix index.
 	if len(uciCoord) != 2 {
-		return 0, 0, fmt.Errorf("invalid coordinate: %s", uciCoord)
+		return 0, 0, fmt.Errorf("invalid square %q: expected a file a-h and a rank 1-8, like \"e2\"", uciCoord)
 	}
 
 	xChar, yChar := uciCoord[0], uciCoord[1]
 	x, ok := col[rune(xChar)]
 	if !ok {
-		return 0, 0, fmt.Errorf("invalid column: %c", xChar)
+		return 0, 0, fmt.Errorf("invalid file %q in square %q: expected a letter from a to h", xChar, uciCoord)
 	}
 	y = int(yChar - '1')
 	if y < 0 || y > 7 {
-		return 0, 0, fmt.Errorf("invalid row: %c", yChar)
+		return 0, 0, fmt.Errorf("invalid rank %q in square %q: expected a digit from 1 to 8", yChar, uciCoord)
 	}
 	y = 7 - y
 	return x, y, nil
