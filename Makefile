@@ -1,5 +1,6 @@
 BIN_DIR     := bin
 CLI_BIN     := $(BIN_DIR)/chess
+ENGINE_BIN  := $(BIN_DIR)/chess-engine
 COVER_FILE  := coverage.out
 PKGS        := ./...
 PERFT_TEST  := go test -tags perft -run 'Perft' -v ./pkg/chess
@@ -15,8 +16,9 @@ help: ## Lista os comandos disponíveis
 
 ## --- Build / execução -------------------------------------------------------
 
-build: ## Compila a CLI em bin/chess
+build: ## Compila a CLI em bin/chess e a engine UCI em bin/chess-engine
 	go build -o $(CLI_BIN) ./cmd/cli
+	go build -o $(ENGINE_BIN) ./cmd/engine
 
 run: build ## Compila e roda a CLI
 	./$(CLI_BIN)
