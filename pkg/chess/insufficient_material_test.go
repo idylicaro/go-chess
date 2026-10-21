@@ -9,7 +9,7 @@ import (
 // algebraic square (e.g. "e1"). Both kings must be present.
 func newGameFromSquares(t *testing.T, pieces map[string]IPiece) *Game {
 	t.Helper()
-	board := newBoard(nil)
+	board := newBoard()
 	converter := &coordinateConverter{}
 	for square, piece := range pieces {
 		x, y, err := converter.FromAlgebraic(square)

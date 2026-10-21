@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-CLI and TUI release (milestone v1.2). The library only gains a few additions.
+CLI and TUI (milestone v1.2) and a much faster move generator (milestone v2 Performance). The public API only gains additions.
 
 ### Added
 
@@ -18,11 +18,20 @@ CLI and TUI release (milestone v1.2). The library only gains a few additions.
 - `chess pgn --replay`: step through a game with the arrow keys (lab 1.2-A, `docs/labs/1.2-A-pgn-replay.md`).
 - `pkg/chess`: `ErrInvalidNotation`, `ErrIllegalMove` and `ErrAmbiguousMove`, wrapped by `ParseMove`, `ParseSAN` and `Move`; `ParseFENTimed`; `Game.CheckTimeout`; `PGNHeaders.TimeControl`.
 - `make ci` runs the CI jobs locally.
+- `Game.PerftParallel(depth, workers)`: perft with the root moves shared among goroutines, and `chess perft --workers N` (default: every CPU). About 6.5x faster on 8 cores (lab 2.0-A, `docs/labs/2.0-A-parallel-perft.md`).
+- `BenchmarkPerft` and `BenchmarkPerftParallel`, the reference nodes/s measures.
 
 ### Changed
 
+- Move generation is about 128x faster (~110k to ~14M perft nodes/s on one core) and a perft search no longer allocates: the board is a `[64]byte` array, moves are generated from precomputed tables and tested with make/unmake instead of a board copy, and mate/stalemate detection stops at the first legal move. `IBoard`, `IPiece` and the rest of the API are unchanged.
+- Threefold repetition uses an incremental Zobrist hash instead of a string key rebuilt after every move.
+- The perft suite reaches the full reference depths (about 600M nodes, ~15s with `make perft`); the default `go test` covers every depth up to 1M nodes.
 - A draw offer in the CLI is answered by the opponent of the side that made it; `accept` used to fail because it used the side to move.
 - The module now depends on bubbletea and lipgloss, for the client only. `pkg/chess` still imports nothing outside the standard library, and `go.mod` stays on Go 1.23.
+
+### Fixed
+
+- `NewGame` did not count the starting position for threefold repetition, so returning to it twice did not draw; `ParseFEN(StartingFEN)` already did.
 
 ## [1.1.0] - 2026-10-20
 

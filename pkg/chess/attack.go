@@ -25,71 +25,63 @@ var kingOffsets = append(append([]Position{}, orthogonalDirections...), diagonal
 //
 //	board.IsSquareAttacked(5, 7, common.Black) // is f1 attacked by Black?
 func (b *Board) IsSquareAttacked(x, y int, byColor common.Color) bool {
-	target := Position{X: x, Y: y}
+	return b.isAttacked(squareIndex(x, y), byColor)
+}
+
+// isAttacked is IsSquareAttacked on a square index, for the generator.
+func (b *Board) isAttacked(target int, byColor common.Color) bool {
+	queen := codeOf(common.Queen, byColor)
 	return b.isAttackedByPawn(target, byColor) ||
-		b.isAttackedByStepper(target, byColor, knightOffsets, common.Knight) ||
-		b.isAttackedByStepper(target, byColor, kingOffsets, common.King) ||
-		b.isAttackedBySlider(target, byColor, orthogonalDirections, common.Rook) ||
-		b.isAttackedBySlider(target, byColor, diagonalDirections, common.Bishop)
+		b.anyCodeOn(moveTables.knight[target], codeOf(common.Knight, byColor)) ||
+		b.anyCodeOn(moveTables.king[target], codeOf(common.King, byColor)) ||
+		b.isAttackedBySlider(orthogonalRays(target), codeOf(common.Rook, byColor), queen) ||
+		b.isAttackedBySlider(diagonalRays(target), codeOf(common.Bishop, byColor), queen)
 }
 
 // isAttackedByPawn checks the two squares a byColor pawn would attack target from.
 // White pawns advance towards y=0, so they attack from the row below (y+1).
-func (b *Board) isAttackedByPawn(target Position, byColor common.Color) bool {
-	attackerY := target.Y - 1
-	if byColor == common.White {
-		attackerY = target.Y + 1
-	}
-	return b.hasPieceAt(Position{X: target.X - 1, Y: attackerY}, byColor, common.Pawn) ||
-		b.hasPieceAt(Position{X: target.X + 1, Y: attackerY}, byColor, common.Pawn)
+func (b *Board) isAttackedByPawn(target int, byColor common.Color) bool {
+	x, attackerY := target%8, target/8-pawnForward(byColor)
+	pawn := codeOf(common.Pawn, byColor)
+	return (onBoard(x-1, attackerY) && b.squares[squareIndex(x-1, attackerY)] == pawn) ||
+		(onBoard(x+1, attackerY) && b.squares[squareIndex(x+1, attackerY)] == pawn)
 }
 
-// isAttackedByStepper checks single-jump attackers (knight, king) at each offset.
-func (b *Board) isAttackedByStepper(target Position, byColor common.Color, offsets []Position, stepper common.PieceType) bool {
-	for _, offset := range offsets {
-		if b.hasPieceAt(Position{X: target.X + offset.X, Y: target.Y + offset.Y}, byColor, stepper) {
+// anyCodeOn reports whether code stands on any of squares.
+func (b *Board) anyCodeOn(squares []int8, code pieceCode) bool {
+	for _, square := range squares {
+		if b.squares[square] == code {
 			return true
 		}
 	}
 	return false
 }
 
-// isAttackedBySlider walks each direction from target until the first piece;
-// it attacks if it is a byColor slider of the given type or a queen.
-func (b *Board) isAttackedBySlider(target Position, byColor common.Color, directions []Position, slider common.PieceType) bool {
-	for _, direction := range directions {
-		blocker, found := b.firstPieceInDirection(target, direction)
-		if found && b.hasPieceAt(blocker, byColor, slider, common.Queen) {
+// isAttackedBySlider looks at the first piece on each ray; it attacks if it
+// is the slider or the queen of the attacking side.
+func (b *Board) isAttackedBySlider(rays [][]int8, slider, queen pieceCode) bool {
+	for _, ray := range rays {
+		if blocker := b.firstCodeOnRay(ray); blocker == slider || blocker == queen {
 			return true
 		}
 	}
 	return false
 }
 
-// firstPieceInDirection returns the position of the nearest piece from start
-// (exclusive) along direction, or found=false if the ray leaves the board.
-func (b *Board) firstPieceInDirection(start, direction Position) (Position, bool) {
-	current := Position{X: start.X + direction.X, Y: start.Y + direction.Y}
-	for b.IsValidCoordinates(current.X, current.Y) == nil {
-		if piece, _ := b.GetPiece(current.X, current.Y); piece != nil {
-			return current, true
+// firstCodeOnRay returns the nearest piece along ray, or noPiece.
+func (b *Board) firstCodeOnRay(ray []int8) pieceCode {
+	for _, square := range ray {
+		if code := b.squares[square]; code != noPiece {
+			return code
 		}
-		current = Position{X: current.X + direction.X, Y: current.Y + direction.Y}
 	}
-	return Position{}, false
+	return noPiece
 }
 
-// hasPieceAt is true when position is on the board and holds a piece of color
-// whose type is one of pieceTypes.
-func (b *Board) hasPieceAt(position Position, color common.Color, pieceTypes ...common.PieceType) bool {
-	piece, err := b.GetPiece(position.X, position.Y)
-	if err != nil || piece == nil || piece.GetColor() != color {
-		return false
+// pawnForward is the row step of a pawn of color: White moves towards y=0.
+func pawnForward(color common.Color) int {
+	if color == common.White {
+		return -1
 	}
-	for _, pieceType := range pieceTypes {
-		if piece.GetType() == pieceType {
-			return true
-		}
-	}
-	return false
+	return 1
 }

@@ -7,7 +7,7 @@ import (
 
 // gameSnapshot is everything Move changes, captured just before it does.
 type gameSnapshot struct {
-	board           IBoard
+	board           Board // a value: copying it is cheap (#12)
 	currentTurn     common.Color
 	state           GameState
 	drawReason      DrawReason
@@ -15,16 +15,13 @@ type gameSnapshot struct {
 	castlingRights  CastlingRights
 	halfMoveClock   int
 	fullMoveNumber  int
-	positionHistory map[string]int
+	historyLength   int // positionHistory is append-only, so Undo truncates it
+	hash            uint64
 }
 
 func (g *Game) snapshot() gameSnapshot {
-	history := make(map[string]int, len(g.positionHistory))
-	for position, count := range g.positionHistory {
-		history[position] = count
-	}
 	return gameSnapshot{
-		board:           g.board.Copy(),
+		board:           *g.board,
 		currentTurn:     g.currentTurn,
 		state:           g.state,
 		drawReason:      g.drawReason,
@@ -32,7 +29,8 @@ func (g *Game) snapshot() gameSnapshot {
 		castlingRights:  g.castlingRights,
 		halfMoveClock:   g.halfMoveClock,
 		fullMoveNumber:  g.fullMoveNumber,
-		positionHistory: history,
+		historyLength:   len(g.positionHistory),
+		hash:            g.hash,
 	}
 }
 
@@ -54,7 +52,8 @@ func (g *Game) Undo() error {
 	snapshot := g.undoStack[last]
 	g.undoStack = g.undoStack[:last]
 
-	g.board = snapshot.board
+	restored := snapshot.board
+	g.board = &restored
 	g.currentTurn = snapshot.currentTurn
 	g.state = snapshot.state
 	g.drawReason = snapshot.drawReason
@@ -62,7 +61,8 @@ func (g *Game) Undo() error {
 	g.castlingRights = snapshot.castlingRights
 	g.halfMoveClock = snapshot.halfMoveClock
 	g.fullMoveNumber = snapshot.fullMoveNumber
-	g.positionHistory = snapshot.positionHistory
+	g.positionHistory = g.positionHistory[:min(snapshot.historyLength, len(g.positionHistory))]
+	g.hash = snapshot.hash
 	g.moveHistory = g.moveHistory[:len(g.moveHistory)-1]
 	g.drawOfferedBy = nil
 	if g.gameTimer != nil {

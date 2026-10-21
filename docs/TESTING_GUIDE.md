@@ -42,10 +42,10 @@ the [reference results](https://www.chessprogramming.org/Perft_Results) for
 six positions (initial, Kiwipete, positions 3–6).
 
 ```bash
-# Shallow depths (<= 10k nodes) run with the normal suite
+# Depths up to 1M nodes run with the normal suite
 go test ./pkg/chess -run Perft
 
-# Every reference depth (~16M nodes, about a minute)
+# Every reference depth (~600M nodes, ~15s on 8 cores)
 make perft            # same as: go test -tags perft -run Perft ./pkg/chess
 ```
 
