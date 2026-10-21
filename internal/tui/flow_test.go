@@ -165,8 +165,7 @@ func TestFlowAnalysisDeepens(t *testing.T) {
 	a := &scriptedAnalyst{reply: opening}
 	tm := start(t, Config{Engine: a, EngineName: "FakeFish", Analyze: true})
 	typeKeys(tm, "enter")
-	expect(t, tm, "Eval +0.34")
-	expect(t, tm, "depth 22")
+	expectMatch(t, tm, `Eval \+0\.34\s+depth 22`)
 	final := finish(t, tm)
 	if a.searches() != len(analysisDepths) || !final.hasAnalysis {
 		t.Errorf("%d searches, analysis %v", a.searches(), final.hasAnalysis)

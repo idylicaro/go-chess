@@ -1,17 +1,20 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/idylicaro/go-chess/internal/pgnread"
 	"github.com/idylicaro/go-chess/internal/render"
+	"github.com/idylicaro/go-chess/internal/tui"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
 func runPGN(e env, args []string) error {
 	fs := newFlagSet(e, "pgn", "[flags] <file|->", "Read a PGN file (or standard input with -), replay it and show its tags,\nmoves in SAN and the final position.")
 	number := fs.Int("game", 1, "which game of the file to show, counting from 1")
+	replay := fs.Bool("replay", false, "step through the game in a full-screen replay (←/→); needs a terminal")
 	styleOpts := addStyleFlags(fs)
 	rest, err := parseFlags(fs, args)
 	if err != nil {
@@ -32,6 +35,16 @@ func runPGN(e env, args []string) error {
 		return usagef("--game %d: the file has %d game(s)", *number, len(games))
 	}
 	parsed := games[*number-1]
+	if *replay {
+		cfg := tui.ReplayConfig{Game: parsed, Style: e.style(styleOpts)}
+		if _, err := tui.NewReplay(cfg); err != nil { // report a bad game before taking over the screen
+			return err
+		}
+		if !render.IsTerminal(e.out) {
+			return errors.New("the replay needs a terminal; run \"chess pgn\" without --replay for plain output")
+		}
+		return tui.RunReplay(e.ctx, cfg, e.in, e.out)
+	}
 	game, moves, err := parsed.Replay()
 	if err != nil {
 		return err

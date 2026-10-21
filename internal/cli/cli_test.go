@@ -636,3 +636,14 @@ func TestTUIRequiresATerminal(t *testing.T) {
 		t.Errorf("extra argument: exit %d", code)
 	}
 }
+
+func TestPGNReplayNeedsATerminalAndAValidGame(t *testing.T) {
+	code, _, errOut := run(t, scholarsMate, "pgn", "--replay", "-")
+	if code != 1 || !strings.Contains(errOut, "needs a terminal") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+	code, _, errOut = run(t, "1. e4 e5 2. Ke3 *", "pgn", "--replay", "-")
+	if code != 1 || !strings.Contains(errOut, "Ke3") {
+		t.Errorf("an illegal move is reported before the screen is taken over: exit %d, stderr %q", code, errOut)
+	}
+}

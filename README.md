@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/idylicaro/go-chess/actions/workflows/ci.yml/badge.svg)](https://github.com/idylicaro/go-chess/actions/workflows/ci.yml)
 
-A chess rules library for Go, with a small terminal client. It has no dependencies outside the standard library.
+A chess rules library for Go, with a terminal client (CLI and TUI). The library, `pkg/chess`, has no dependencies outside the standard library; only the client uses [bubbletea](https://github.com/charmbracelet/bubbletea) and [lipgloss](https://github.com/charmbracelet/lipgloss).
 
 - Full legal-move generation: castling, en passant, promotion, check, checkmate and stalemate.
 - Draw rules: fifty-move, threefold repetition, insufficient material, agreement, and timeout against insufficient material.
@@ -69,17 +69,34 @@ Errors from a game that has already ended wrap `chess.ErrGameOver`; use `errors.
 ## Command-line client
 
 ```bash
-make run          # builds bin/chess and starts it
+make build                      # builds bin/chess
+bin/chess play                  # two players at one keyboard
+bin/chess play --engine stockfish --level 5 --color black --time 5+3
+bin/chess tui --engine stockfish            # full-screen interface
+bin/chess tui --analyze --engine stockfish  # engine evaluation and main line
+bin/chess pgn game.pgn                      # show a game; add --replay to step through it
+bin/chess perft 5 --divide                  # check move generation
+bin/chess help                              # every command; `chess <command> --help` for its flags
 ```
 
-Moves are typed in UCI notation (`e2e4`, `e7e8q`). Other commands: `moves`, `undo`, `resign`, `draw`, `accept`, `decline`, `exit`.
+| Command | What it does |
+|---|---|
+| `play` | Plays in the terminal. Moves in SAN (`Nf3`, `exd5`, `O-O`) or UCI (`e2e4`); `help` inside lists `undo`, `resign`, `draw`, `fen`, `pgn`, `flip` and `moves <square>`. `--pgn-out file` (or `-`) writes the PGN when it ends. |
+| `tui` | Full-screen interface (bubbletea): arrows and enter or the mouse to move, a dialog for promotions, clocks, an engine opponent and an analysis mode. `q` quits. |
+| `analyze` | Asks a UCI engine for the best move and the main line of `--fen`. |
+| `perft` | Counts the nodes of the legal-move tree. |
+| `fen` | Validates a FEN and shows the position. |
+| `pgn` | Reads a PGN and shows the game; `--replay` steps through it with ←/→. |
+
+The board uses colors and Unicode pieces when the terminal supports them. `--no-color` and `--ascii` (or `NO_COLOR`) turn them off, and without a UTF-8 locale or a terminal it falls back to ASCII. Engines are any UCI engine; `--level` sets Stockfish's `Skill Level`.
 
 ## Project layout
 
 ```
-cmd/cli/        terminal client
+cmd/cli/        terminal client (entry point)
 pkg/chess/      public API: board, pieces, game, FEN, SAN, PGN, perft
-internal/       common types, clock, UCI move parsing, debug logging
+internal/       cli, tui, render (board, panel), engine (UCI client), pgnread,
+                moveinput, plus common types, clock, UCI move parsing, debug logging
 docs/           API surface, roadmap, testing guide
 scripts/        benchmark script
 ```
