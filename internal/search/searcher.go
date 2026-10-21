@@ -51,11 +51,12 @@ type Result struct {
 type Options struct {
 	HashMB  int // transposition table size; 0 means DefaultHashMB
 	Pruning Pruning
+	Threads int // goroutines searching together (Lazy SMP); 0 means 1
 }
 
 // DefaultOptions are the engine's settings.
 func DefaultOptions() Options {
-	return Options{HashMB: DefaultHashMB, Pruning: AllPruning}
+	return Options{HashMB: DefaultHashMB, Pruning: AllPruning, Threads: 1}
 }
 
 // Searcher runs searches with one evaluation function and keeps its
@@ -65,6 +66,7 @@ type Searcher struct {
 	evaluate Evaluator
 	tt       *transpositionTable
 	pruning  Pruning
+	threads  int
 	now      func() time.Time
 }
 
@@ -77,7 +79,7 @@ func New(evaluate Evaluator, options Options) *Searcher {
 	if hashMB <= 0 {
 		hashMB = DefaultHashMB
 	}
-	return &Searcher{evaluate: evaluate, tt: newTranspositionTable(hashMB), pruning: options.Pruning, now: time.Now}
+	return &Searcher{evaluate: evaluate, tt: newTranspositionTable(hashMB), pruning: options.Pruning, threads: max(options.Threads, 1), now: time.Now}
 }
 
 // Clear forgets what earlier searches learned, for a new game.
@@ -94,10 +96,19 @@ func (s *Searcher) Search(ctx context.Context, board *chess.SearchBoard, limits 
 	if budget.limited {
 		stop.withDeadline(start.Add(budget.hard), s.now)
 	}
+	main := s.newWorker(board, stop)
+	helpers := s.startHelpers(board, stop)
+	result := s.deepen(main, maxDepth(limits), budget, start, report)
+	stop.stop() // the helpers search until the main worker is done
+	helpers.Wait()
+	return finish(result, main.totalNodes())
+}
+
+// newWorker gives a worker its own copy of board.
+func (s *Searcher) newWorker(board *chess.SearchBoard, stop *stopper) *worker {
 	w := newWorker(board.Clone(), s.evaluate, stop, s.tt)
 	w.pruning = s.pruning
-	result := s.deepen(w, maxDepth(limits), budget, start, report)
-	return finish(result, w.totalNodes())
+	return w
 }
 
 // deepen runs iterative deepening and returns the last completed iteration.

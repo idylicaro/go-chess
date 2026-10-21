@@ -234,10 +234,12 @@ func TestServer_PruningOptionsReachTheSearcher(t *testing.T) {
 	if built[0].Pruning != search.AllPruning {
 		t.Fatalf("default pruning = %+v, want every technique on", built[0].Pruning)
 	}
-	for _, command := range []string{"setoption name NullMove value false", "setoption name lmr value false", "setoption name Futility value maybe"} {
+	commands := []string{"setoption name NullMove value false", "setoption name lmr value false", "setoption name Futility value maybe",
+		"setoption name Threads value 4", "setoption name Threads value 0"}
+	for _, command := range commands {
 		server.handle(context.Background(), command)
 	}
-	if got := built[len(built)-1].Pruning; got != (search.Pruning{Futility: true}) {
-		t.Errorf("pruning after the options = %+v, want only Futility", got)
+	if got := built[len(built)-1]; got.Pruning != (search.Pruning{Futility: true}) || got.Threads != 4 {
+		t.Errorf("options after setoption = %+v, want only Futility and 4 threads", got)
 	}
 }
