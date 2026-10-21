@@ -95,3 +95,25 @@ func parseCoordinate(uciCoord string) (x, y int, err error) {
 	y = 7 - y
 	return x, y, nil
 }
+
+// promotionLetterByPiece is the inverse of promotionPieceMap.
+var promotionLetterByPiece = map[common.PieceType]byte{
+	common.Queen: 'q', common.Rook: 'r', common.Bishop: 'b', common.Knight: 'n',
+}
+
+// String formats the move in UCI long algebraic notation, the inverse of
+// ParseMove. The zero-value Promotion (Pawn) means "no promotion".
+//
+//	Move{FromX: 4, FromY: 6, ToX: 4, ToY: 4}.String() // "e2e4"
+func (m Move) String() string {
+	notation := formatCoordinate(m.FromX, m.FromY) + formatCoordinate(m.ToX, m.ToY)
+	if letter, ok := promotionLetterByPiece[m.Promotion]; ok {
+		notation += string(letter)
+	}
+	return notation
+}
+
+// formatCoordinate is the inverse of parseCoordinate: internal row 0 is rank 8.
+func formatCoordinate(x, y int) string {
+	return string([]byte{byte('a' + x), byte('8' - y)})
+}

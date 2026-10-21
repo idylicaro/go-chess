@@ -23,6 +23,30 @@ The test suite includes:
 - **TestCastlingIntegration** - Castling validation
 - **TestEnPassantIntegration** - En passant validation
 
+### Perft (move generation correctness)
+
+Perft counts the leaf nodes of the legal move tree and compares them with
+the [reference results](https://www.chessprogramming.org/Perft_Results) for
+six positions (initial, Kiwipete, positions 3–6).
+
+```bash
+# Shallow depths (<= 10k nodes) run with the normal suite
+go test ./internal/chess -run Perft
+
+# Every reference depth (~16M nodes, about a minute)
+make perft            # same as: go test -tags perft -run Perft ./internal/chess
+```
+
+When a count is wrong, split it by first move and diff against a reference
+engine (e.g. Stockfish's `go perft N`):
+
+```go
+game, _ := chess.ParseFEN("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+for move, nodes := range game.Divide(3) {
+    fmt.Println(move, nodes) // e.g. "e1g1 2059"
+}
+```
+
 ## Benchmarking
 
 ### Manual Benchmarks
