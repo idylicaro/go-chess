@@ -32,7 +32,7 @@ test-race: ## Roda os testes com o detector de race
 test-short: ## Roda os testes pulando os marcados como longos (testing.Short)
 	go test -short $(PKGS)
 
-perft: ## Roda o perft completo nas posições de referência (lento; usa cache do go test)
+perft: ## Roda o perft completo nas posições de referência (~600M nós, ~15s; usa cache do go test)
 	$(PERFT_TEST)
 
 perft-nocache: ## Igual ao perft, mas ignora o cache e sempre executa de novo

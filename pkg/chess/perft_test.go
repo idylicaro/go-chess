@@ -1,10 +1,13 @@
 package chess
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // perftShallowNodeLimit keeps the default `go test` run fast; depths above it
 // run only with `-tags perft` (see perft_deep_test.go and `make perft`).
-const perftShallowNodeLimit = 10_000
+const perftShallowNodeLimit = 1_000_000
 
 // perftCases holds the reference counts from
 // https://www.chessprogramming.org/Perft_Results, indexed by depth-1.
@@ -12,12 +15,12 @@ var perftCases = []struct {
 	position string
 	nodes    []int
 }{
-	{"initial", []int{20, 400, 8902, 197281, 4865609}},
-	{"kiwipete", []int{48, 2039, 97862, 4085603}},
-	{"position3", []int{14, 191, 2812, 43238, 674624}},
-	{"position4", []int{6, 264, 9467, 422333}},
-	{"position5", []int{44, 1486, 62379, 2103487}},
-	{"position6", []int{46, 2079, 89890, 3894594}},
+	{"initial", []int{20, 400, 8902, 197281, 4865609, 119060324}},
+	{"kiwipete", []int{48, 2039, 97862, 4085603, 193690690}},
+	{"position3", []int{14, 191, 2812, 43238, 674624, 11030083}},
+	{"position4", []int{6, 264, 9467, 422333, 15833292}},
+	{"position5", []int{44, 1486, 62379, 2103487, 89941194}},
+	{"position6", []int{46, 2079, 89890, 3894594, 164075551}},
 }
 
 // runPerftCases checks every reference depth whose node count is <= maxNodes.
@@ -28,7 +31,8 @@ func runPerftCases(t *testing.T, maxNodes int) {
 			if want > maxNodes {
 				continue
 			}
-			t.Run(tc.position, func(t *testing.T) {
+			t.Run(fmt.Sprintf("%s/depth%d", tc.position, depth), func(t *testing.T) {
+				t.Parallel() // the deep cases are independent and CPU-bound
 				if got := mustParseFEN(t, perftReferenceFENs[tc.position]).Perft(depth); got != want {
 					t.Errorf("Perft(%d) = %d, want %d", depth, got, want)
 				}
