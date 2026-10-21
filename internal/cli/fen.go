@@ -25,7 +25,7 @@ func runFEN(e env, args []string) error {
 	}
 	fmt.Fprintf(e.out, "FEN:         %s\n", game.FEN())
 	displayGameState(e.out, game)
-	displayBoard(e.out, game.GetBoard(), nil)
+	displayBoard(e.out, game.GetBoard(), nil, false)
 	fmt.Fprintf(e.out, "Legal moves: %d\n", len(game.LegalMoves()))
 	return nil
 }

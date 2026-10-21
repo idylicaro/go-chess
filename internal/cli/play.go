@@ -10,7 +10,7 @@ import (
 )
 
 func runPlay(e env, args []string) error {
-	fs := newFlagSet(e, "play", "[flags]", "Play a game in the terminal. Moves are typed in SAN (Nf3, exd5, O-O) or UCI (e2e4).")
+	fs := newFlagSet(e, "play", "[flags]", "Play a game in the terminal. Moves are typed in SAN (Nf3, exd5, O-O) or UCI (e2e4).\nType \"help\" during the game for the other commands.")
 	rest, err := parseFlags(fs, args)
 	if err != nil {
 		return err
@@ -70,11 +70,10 @@ func runPlay(e env, args []string) error {
 		game = chess.NewGame()
 	}
 
+	s := &session{env: e, game: game}
 	for {
-		displayGameState(e.out, game)
-		displayBoard(e.out, game.GetBoard(), nil)
-
-		fmt.Fprintf(e.out, "> Enter a move (SAN or UCI), or resign|draw|accept|decline|undo|moves (%s): ", game.GetCurrentTurn().String())
+		s.show()
+		fmt.Fprintf(e.out, "> Enter a move (SAN or UCI) or a command, \"help\" lists them (%s): ", game.GetCurrentTurn())
 		if !scanner.Scan() {
 			return nil
 		}
@@ -84,32 +83,55 @@ func runPlay(e env, args []string) error {
 			fmt.Fprintln(e.out, "Exiting game.")
 			return nil
 		}
-		if runGameCommand(e, game, input) {
-			if game.IsOver() {
-				finish(e, game)
-				return nil
+		if !s.command(input) {
+			move, err := moveinput.Parse(game, input)
+			if err != nil {
+				fmt.Fprintf(e.out, "Error: %v\n", err)
+				continue
 			}
-			continue
-		}
-
-		move, err := moveinput.Parse(game, input)
-		if err != nil {
-			fmt.Fprintf(e.out, "Error: %v\n", err)
-			continue
-		}
-		if err := game.Move(move); err != nil {
-			fmt.Fprintf(e.out, "Error: %v\n", err)
-			continue
+			if err := game.Move(move); err != nil {
+				fmt.Fprintf(e.out, "Error: %v\n", err)
+				continue
+			}
 		}
 		if game.IsOver() {
-			finish(e, game)
+			s.show()
+			fmt.Fprintf(e.out, "Game over! Result: %s\n", game.Result())
 			return nil
 		}
 	}
 }
 
-// runGameCommand handles the non-move commands and reports whether input was one.
-func runGameCommand(e env, game *chess.Game, input string) bool {
+// session is a game in progress on the terminal.
+type session struct {
+	env
+	game    *chess.Game
+	flipped bool // show the board from Black's side
+}
+
+func (s *session) show() {
+	displayGameState(s.out, s.game)
+	displayBoard(s.out, s.game.GetBoard(), nil, s.flipped)
+}
+
+// gameCommands lists the in-game commands for "help", in display order.
+var gameCommands = []struct{ name, help string }{
+	{"moves", "list the legal moves"},
+	{"undo", "take back the last move"},
+	{"resign", "resign the game"},
+	{"draw", "offer a draw"},
+	{"accept", "accept the opponent's draw offer"},
+	{"decline", "decline the opponent's draw offer"},
+	{"fen", "print the position as FEN"},
+	{"pgn", "print the game so far as PGN"},
+	{"flip", "turn the board around"},
+	{"help", "show this list"},
+	{"exit", "leave the game (also: quit)"},
+}
+
+// command runs input if it is an in-game command and reports whether it was.
+func (s *session) command(input string) bool {
+	game := s.game
 	turn := game.GetCurrentTurn()
 	var err error
 	switch input {
@@ -118,30 +140,64 @@ func runGameCommand(e env, game *chess.Game, input string) bool {
 	case "draw":
 		err = game.OfferDraw(turn)
 		if err == nil {
-			fmt.Fprintf(e.out, "%v offers a draw. The opponent can type \"accept\" or \"decline\".\n", turn)
+			fmt.Fprintf(s.out, "%v offers a draw. The opponent can type \"accept\" or \"decline\".\n", turn)
 		}
 	case "accept":
-		err = game.AcceptDraw(turn)
+		err = game.AcceptDraw(s.answerer())
 	case "decline":
-		err = game.DeclineDraw(turn)
+		err = game.DeclineDraw(s.answerer())
+		if err == nil {
+			fmt.Fprintln(s.out, "Draw offer declined.")
+		}
 	case "undo":
 		err = game.Undo()
 	case "moves":
 		for _, move := range game.LegalMoves() {
-			fmt.Fprintf(e.out, "%s ", move)
+			san, sanErr := game.SAN(move)
+			if sanErr != nil {
+				san = move.String()
+			}
+			fmt.Fprintf(s.out, "%s ", san)
 		}
-		fmt.Fprintln(e.out)
+		fmt.Fprintln(s.out)
+	case "fen":
+		fmt.Fprintln(s.out, game.FEN())
+	case "pgn":
+		var text string
+		if text, err = game.PGN(s.pgnHeaders()); err == nil {
+			fmt.Fprint(s.out, text)
+		}
+	case "flip":
+		s.flipped = !s.flipped
+	case "help":
+		for _, c := range gameCommands {
+			fmt.Fprintf(s.out, "  %-8s %s\n", c.name, c.help)
+		}
+		fmt.Fprintln(s.out, "Anything else is read as a move, in SAN (Nf3, exd5, O-O, e8=Q) or UCI (e2e4, e7e8q).")
 	default:
 		return false
 	}
 	if err != nil {
-		fmt.Fprintf(e.out, "Error: %v\n", err)
+		fmt.Fprintf(s.out, "Error: %v\n", err)
 	}
 	return true
 }
 
-func finish(e env, game *chess.Game) {
-	displayGameState(e.out, game)
-	displayBoard(e.out, game.GetBoard(), nil)
-	fmt.Fprintf(e.out, "Game over! Result: %s\n", game.Result())
+// answerer is the side that answers a pending draw offer: the opponent of
+// whoever made it, which is not necessarily the side to move.
+func (s *session) answerer() chess.Color {
+	if by, pending := s.game.PendingDrawOffer(); pending && by == chess.White {
+		return chess.Black
+	}
+	return chess.White
+}
+
+func (s *session) pgnHeaders() chess.PGNHeaders {
+	return chess.PGNHeaders{
+		Event: "Casual game",
+		Site:  "go-chess CLI",
+		Date:  s.now().Format("2006.01.02"),
+		White: "White",
+		Black: "Black",
+	}
 }

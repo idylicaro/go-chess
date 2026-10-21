@@ -46,7 +46,7 @@ func runPGN(e env, args []string) error {
 	fmt.Fprintln(e.out, numberedMoves(parsed.Moves, startFEN(parsed)))
 	fmt.Fprintln(e.out)
 	displayGameState(e.out, game)
-	displayBoard(e.out, game.GetBoard(), nil)
+	displayBoard(e.out, game.GetBoard(), nil, false)
 	fmt.Fprintf(e.out, "FEN: %s\n", game.FEN())
 	if parsed.Result != "" {
 		fmt.Fprintf(e.out, "Result: %s\n", parsed.Result)

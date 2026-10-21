@@ -243,3 +243,75 @@ func TestPlayAcceptsSANAndExplainsRejectedMoves(t *testing.T) {
 		}
 	}
 }
+
+// play runs a game from the scripted lines (after declining the timer).
+func play(t *testing.T, lines ...string) string {
+	t.Helper()
+	code, out, errOut := run(t, "n\n"+strings.Join(lines, "\n")+"\n", "play")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	return out
+}
+
+func TestPlayHelpListsEveryCommand(t *testing.T) {
+	out := play(t, "help", "exit")
+	for _, c := range gameCommands {
+		if !strings.Contains(out, c.name) {
+			t.Errorf("help does not list %q", c.name)
+		}
+	}
+}
+
+func TestPlayUndoFENAndMoves(t *testing.T) {
+	out := play(t, "e4", "fen", "undo", "fen", "moves", "exit")
+	if !strings.Contains(out, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1") {
+		t.Errorf("no FEN after e4:\n%s", out)
+	}
+	if strings.Count(out, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") != 1 {
+		t.Errorf("FEN after undo is not the starting one:\n%s", out)
+	}
+	if !strings.Contains(out, "Nf3 ") || !strings.Contains(out, "e4 ") {
+		t.Errorf("moves are not listed in SAN:\n%s", out)
+	}
+	if out := play(t, "undo", "exit"); !strings.Contains(out, "Error: no move to undo") {
+		t.Errorf("undo at the start:\n%s", out)
+	}
+}
+
+func TestPlayFlipTurnsTheBoardAround(t *testing.T) {
+	out := play(t, "flip", "exit")
+	if !strings.Contains(out, "h g f e d c b a") {
+		t.Errorf("board not flipped:\n%s", out)
+	}
+	if out := play(t, "flip", "flip", "exit"); strings.Count(out, "h g f e d c b a") != 1 {
+		t.Errorf("flip twice should show the flipped board once, then restore it:\n%s", out)
+	}
+}
+
+func TestPlayPGNCommand(t *testing.T) {
+	out := play(t, "e4", "e5", "pgn", "exit")
+	for _, want := range []string{`[Event "Casual game"]`, `[Result "*"]`, "1. e4 e5 *"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("pgn output lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestPlayResign(t *testing.T) {
+	out := play(t, "e4", "resign")
+	if !strings.Contains(out, "Black resigned - White Wins") || !strings.Contains(out, "Result: 1-0") {
+		t.Errorf("output:\n%s", out)
+	}
+}
+
+func TestPlayDrawIsAnsweredByTheOpponent(t *testing.T) {
+	out := play(t, "e4", "e5", "draw", "accept")
+	if !strings.Contains(out, "White offers a draw") || !strings.Contains(out, "Draw (Agreement)") || !strings.Contains(out, "Result: 1/2-1/2") {
+		t.Errorf("accept:\n%s", out)
+	}
+	out = play(t, "draw", "decline", "accept", "exit")
+	if !strings.Contains(out, "Draw offer declined.") || !strings.Contains(out, "Error: cannot accept a draw") {
+		t.Errorf("decline:\n%s", out)
+	}
+}

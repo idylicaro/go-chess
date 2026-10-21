@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 // env is what a command reads and writes, so tests can drive it.
@@ -17,6 +18,7 @@ type env struct {
 	in  io.Reader
 	out io.Writer
 	err io.Writer
+	now func() time.Time
 }
 
 // usageError is a mistake in how the command was invoked (exit status 2).
@@ -47,7 +49,7 @@ var commands = []command{
 //
 //	os.Exit(cli.Run(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 func Run(ctx context.Context, args []string, in io.Reader, out, errOut io.Writer) int {
-	e := env{ctx: ctx, in: in, out: out, err: errOut}
+	e := env{ctx: ctx, in: in, out: out, err: errOut, now: time.Now}
 	name := "play"
 	rest := args
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {

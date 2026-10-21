@@ -8,11 +8,19 @@ import (
 	"time"
 )
 
-func displayBoard(w io.Writer, b chess.IBoard, validMoves []chess.Position) {
+func displayBoard(w io.Writer, b chess.IBoard, validMoves []chess.Position, flipped bool) {
 	fmt.Fprintln(w, "  -----------------")
-	for y, py := 0, 8; y < 8; y, py = y+1, py-1 { // py == presentationY
-		fmt.Fprintf(w, "%d |", py)
-		for x := 0; x < 8; x++ { // col a-h
+	for row := 0; row < 8; row++ {
+		y := row
+		if flipped {
+			y = 7 - row
+		}
+		fmt.Fprintf(w, "%d |", 8-y)
+		for col := 0; col < 8; col++ {
+			x := col
+			if flipped {
+				x = 7 - col
+			}
 			piece, err := b.GetPiece(x, y)
 			if err == nil && piece != nil {
 				fmt.Fprintf(w, " %s", getPieceChar(piece))
@@ -33,7 +41,11 @@ func displayBoard(w io.Writer, b chess.IBoard, validMoves []chess.Position) {
 		fmt.Fprintln(w, " |")
 	}
 	fmt.Fprintln(w, "  -----------------")
-	fmt.Fprintln(w, "    a b c d e f g h")
+	if flipped {
+		fmt.Fprintln(w, "    h g f e d c b a")
+	} else {
+		fmt.Fprintln(w, "    a b c d e f g h")
+	}
 }
 
 func displayGameState(w io.Writer, game *chess.Game) {
