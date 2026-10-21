@@ -62,3 +62,4 @@ jobs:
           for target in FuzzParseFEN FuzzSAN FuzzPGN; do
             go test ./pkg/chess -run '^$' -fuzz "^${target}\$" -fuzztime 30s
           done
+          go test ./internal/pgnread -run '^$' -fuzz '^FuzzParse$' -fuzztime 30s

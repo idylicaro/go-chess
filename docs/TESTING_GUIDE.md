@@ -23,6 +23,18 @@ The test suite includes:
 - **TestCastlingIntegration** - Castling validation
 - **TestEnPassantIntegration** - En passant validation
 
+### Terminal client
+
+```bash
+go test ./internal/...               # CLI, render, TUI, engine client, PGN reader
+go test ./internal/tui -update       # rewrite the golden snapshots after a deliberate layout change
+```
+
+- `internal/render` and `internal/tui` compare their output with golden files in `testdata/`. Read the diff of `testdata/` before committing an update.
+- `internal/tui/flow_test.go` runs the model in a real `tea.Program` with `teatest`. The tests that need a real engine run only when `stockfish` is in the `PATH` (and not with `-short`).
+- The CLI tests use the test binary itself as a scripted UCI engine (`GO_CHESS_FAKE_UCI`), and `execute` takes the environment, so the output does not depend on the machine's locale or terminal.
+- `make ci` runs the same jobs as `.github/workflows/ci.yml` on your machine: gofmt, vet, `-race` tests, golangci-lint, the deep perft and the fuzz targets.
+
 ### Perft (move generation correctness)
 
 Perft counts the leaf nodes of the legal move tree and compares them with
