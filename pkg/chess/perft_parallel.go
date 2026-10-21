@@ -39,14 +39,14 @@ func (g *Game) PerftParallel(depth, workers int) int {
 
 // rootMoveQueue hands out root moves to workers, each exactly once.
 type rootMoveQueue struct {
-	moves []genMove
+	moves []SearchMove
 	next  atomic.Int64
 }
 
-func (q *rootMoveQueue) take() (genMove, bool) {
+func (q *rootMoveQueue) take() (SearchMove, bool) {
 	i := q.next.Add(1) - 1
 	if i >= int64(len(q.moves)) {
-		return genMove{}, false
+		return SearchMove{}, false
 	}
 	return q.moves[i], true
 }

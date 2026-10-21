@@ -25,6 +25,16 @@ const (
 	Black = common.Black
 )
 
+// Piece types, as SearchBoard.PieceOn returns them. Pawn is the zero value.
+const (
+	Pawn   = common.Pawn
+	Knight = common.Knight
+	Bishop = common.Bishop
+	Rook   = common.Rook
+	Queen  = common.Queen
+	King   = common.King
+)
+
 // Pieces a pawn can promote to, for Move.Promotion. The zero value means no
 // promotion (and promotes to a queen if the move reaches the last rank).
 const (

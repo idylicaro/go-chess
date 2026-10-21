@@ -25,7 +25,7 @@ func (g *Game) perft(depth int) int {
 	if depth <= 0 {
 		return 1
 	}
-	var buffer [maxMovesPerPosition]genMove
+	var buffer [maxMovesPerPosition]SearchMove
 	moves := g.appendLegalMoves(buffer[:0])
 	if depth == 1 {
 		return len(moves)
@@ -87,7 +87,7 @@ func (g *Game) clone() *Game {
 // legalUCIMoves lists every legal move of the side to move, expanding each
 // promotion into its four piece choices.
 func (g *Game) legalUCIMoves() []uci.Move {
-	var buffer [maxMovesPerPosition]genMove
+	var buffer [maxMovesPerPosition]SearchMove
 	generated := g.appendLegalMoves(buffer[:0])
 	moves := make([]uci.Move, len(generated))
 	for i, move := range generated {

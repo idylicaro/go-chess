@@ -9,7 +9,7 @@ var pawnCaptureSides = [2]int{-1, 1}
 
 // appendPawnMoves adds pushes, the double push from the home rank, captures,
 // en passant, and the four promotions of any move to the last rank.
-func (g *Game) appendPawnMoves(moves []genMove, from int) []genMove {
+func (g *Game) appendPawnMoves(moves []SearchMove, from int) []SearchMove {
 	x, y := from%8, from/8
 	forward := pawnForward(g.currentTurn)
 	if !onBoard(x, y+forward) {
@@ -24,7 +24,7 @@ func (g *Game) appendPawnMoves(moves []genMove, from int) []genMove {
 	return moves
 }
 
-func (g *Game) appendPawnPushes(moves []genMove, from, x, y, forward int) []genMove {
+func (g *Game) appendPawnPushes(moves []SearchMove, from, x, y, forward int) []SearchMove {
 	one := squareIndex(x, y+forward)
 	if g.board.squares[one] != noPiece {
 		return moves
@@ -36,7 +36,7 @@ func (g *Game) appendPawnPushes(moves []genMove, from, x, y, forward int) []genM
 		return moves
 	}
 	if two := squareIndex(x, y+2*forward); g.board.squares[two] == noPiece {
-		moves = append(moves, genMove{from: int8(from), to: int8(two)})
+		moves = append(moves, SearchMove{from: int8(from), to: int8(two)})
 	}
 	return moves
 }
@@ -63,12 +63,12 @@ func (g *Game) isEnPassantSquare(to int) bool {
 }
 
 // appendPawnMove adds the move, or one move per piece when it promotes.
-func appendPawnMove(moves []genMove, from, to int) []genMove {
+func appendPawnMove(moves []SearchMove, from, to int) []SearchMove {
 	if row := to / 8; row != 0 && row != 7 {
-		return append(moves, genMove{from: int8(from), to: int8(to)})
+		return append(moves, SearchMove{from: int8(from), to: int8(to)})
 	}
 	for _, promotion := range promotionChoices {
-		moves = append(moves, genMove{from: int8(from), to: int8(to), promotion: promotion})
+		moves = append(moves, SearchMove{from: int8(from), to: int8(to), promotion: promotion})
 	}
 	return moves
 }

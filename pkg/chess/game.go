@@ -205,22 +205,22 @@ func (g *Game) requireOwnPieceOn(move uci.Move) error {
 
 // findGenMove returns the legal move matching move, with a missing or
 // invalid promotion piece read as a queen.
-func (g *Game) findGenMove(move uci.Move) (genMove, bool) {
+func (g *Game) findGenMove(move uci.Move) (SearchMove, bool) {
 	if g.board.IsValidCoordinates(move.ToX, move.ToY) != nil {
-		return genMove{}, false
+		return SearchMove{}, false
 	}
-	wanted := genMove{
+	wanted := SearchMove{
 		from:      int8(squareIndex(move.FromX, move.FromY)),
 		to:        int8(squareIndex(move.ToX, move.ToY)),
 		promotion: g.normalizedPromotion(move),
 	}
-	var buffer [maxMovesPerPosition]genMove
+	var buffer [maxMovesPerPosition]SearchMove
 	for _, legal := range g.appendLegalMoves(buffer[:0]) {
 		if legal == wanted {
 			return legal, true
 		}
 	}
-	return genMove{}, false
+	return SearchMove{}, false
 }
 
 func (g *Game) getOpponentColor() common.Color {

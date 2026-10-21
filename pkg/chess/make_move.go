@@ -22,7 +22,7 @@ type moveUndo struct {
 //
 //	undo := game.makeMove(move)
 //	defer game.unmakeMove(move, undo)
-func (g *Game) makeMove(move genMove) moveUndo {
+func (g *Game) makeMove(move SearchMove) moveUndo {
 	board := g.board
 	mover := board.squares[move.from]
 	undo := moveUndo{board.squares[move.to], move.to, g.castlingRights, g.enPassantTarget, g.halfMoveClock, g.hash}
@@ -41,7 +41,7 @@ func (g *Game) makeMove(move genMove) moveUndo {
 }
 
 // unmakeMove restores the position from before makeMove(move).
-func (g *Game) unmakeMove(move genMove, undo moveUndo) {
+func (g *Game) unmakeMove(move SearchMove, undo moveUndo) {
 	g.currentTurn = opposite(g.currentTurn)
 	board := g.board
 	mover := board.squares[move.to]
@@ -62,7 +62,7 @@ func (g *Game) unmakeMove(move genMove, undo moveUndo) {
 }
 
 // promotedCode is the piece that lands on the destination.
-func promotedCode(mover pieceCode, move genMove) pieceCode {
+func promotedCode(mover pieceCode, move SearchMove) pieceCode {
 	if move.promotion == common.Pawn {
 		return mover
 	}
@@ -70,7 +70,7 @@ func promotedCode(mover pieceCode, move genMove) pieceCode {
 }
 
 // moveKing tracks the king and, on a two-square king move, the castling rook.
-func (g *Game) moveKing(move genMove) {
+func (g *Game) moveKing(move SearchMove) {
 	g.board.kings[g.currentTurn] = squarePositions[move.to]
 	if rookFrom, rookTo, castles := castlingRookSquares(move); castles {
 		g.putCode(rookTo, g.board.squares[rookFrom])
@@ -78,7 +78,7 @@ func (g *Game) moveKing(move genMove) {
 	}
 }
 
-func (g *Game) unmoveKing(move genMove) {
+func (g *Game) unmoveKing(move SearchMove) {
 	g.board.kings[g.currentTurn] = squarePositions[move.from]
 	if rookFrom, rookTo, castles := castlingRookSquares(move); castles {
 		g.board.squares[rookFrom] = g.board.squares[rookTo]
@@ -88,7 +88,7 @@ func (g *Game) unmoveKing(move genMove) {
 
 // castlingRookSquares returns where the rook goes for a king move of two
 // columns: the h-rook (short) or a-rook (long) lands next to the king.
-func castlingRookSquares(move genMove) (rookFrom, rookTo int, castles bool) {
+func castlingRookSquares(move SearchMove) (rookFrom, rookTo int, castles bool) {
 	switch move.to - move.from {
 	case 2:
 		return int(move.from) + 3, int(move.from) + 1, true
@@ -102,7 +102,7 @@ func castlingRookSquares(move genMove) (rookFrom, rookTo int, castles bool) {
 // advanceCounters updates the halfmove clock (#5), castling rights, the en
 // passant target, the fullmove number, the turn and their share of the hash
 // after mover moved.
-func (g *Game) advanceCounters(mover, captured pieceCode, move genMove) {
+func (g *Game) advanceCounters(mover, captured pieceCode, move SearchMove) {
 	g.halfMoveClock++
 	if mover.pieceType() == common.Pawn || captured != noPiece {
 		g.halfMoveClock = 0
@@ -118,7 +118,7 @@ func (g *Game) advanceCounters(mover, captured pieceCode, move genMove) {
 }
 
 // enPassantTargetAfter is the square a pawn skipped on its double push.
-func enPassantTargetAfter(mover pieceCode, move genMove) *Position {
+func enPassantTargetAfter(mover pieceCode, move SearchMove) *Position {
 	distance := move.to - move.from
 	if mover.pieceType() != common.Pawn || (distance != 16 && distance != -16) {
 		return nil
