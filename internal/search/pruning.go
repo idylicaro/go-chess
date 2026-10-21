@@ -33,11 +33,14 @@ type node struct {
 	futile     bool // quiet moves that do not give check may be skipped
 }
 
-func (w *worker) newNode(depth, ply int) node {
+// newNode reads the position for the pruning decisions; alpha is the
+// node's window, which futility compares against.
+func (w *worker) newNode(depth, ply, alpha int) node {
 	n := node{depth: depth, ply: ply, inCheck: w.board.InCheck()}
 	if !n.inCheck && (w.pruning.NullMove || w.pruning.Futility) {
 		n.staticEval = w.evaluate(w.board)
 	}
+	n.futile = w.isFutile(n, alpha)
 	return n
 }
 

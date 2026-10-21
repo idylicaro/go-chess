@@ -66,7 +66,7 @@ func (w *worker) negamax(depth, ply, alpha, beta int) int {
 	if score, settled := entry.cutoffScore(depth, ply, alpha, beta); found && settled && ply > 0 {
 		return score
 	}
-	n := w.newNode(depth, ply)
+	n := w.newNode(depth, ply, alpha)
 	if score, cut := w.tryNullMove(n, beta, allowNull); cut {
 		return score
 	}
@@ -110,14 +110,13 @@ func (w *worker) isDraw() bool {
 func (w *worker) searchMoves(n node, alpha, beta int, ttMove chess.SearchMove) (int, chess.SearchMove) {
 	var buffer [chess.MaxSearchMoves]chess.SearchMove
 	picker := w.order.newMovePicker(w.board, w.board.GenerateMoves(buffer[:0]), w.hashMove(n.ply, ttMove), n.ply)
-	n.futile = w.isFutile(n, alpha)
 	best, bestMove, legalMoves := -infinity, ttMove, 0
 	for move, ok := picker.pick(); ok; move, ok = picker.pick() {
 		score, outcome := w.searchChild(n, move, legalMoves, alpha, beta)
-		if outcome != childIllegal {
-			legalMoves++
-			best = max(best, score)
+		if outcome == childIllegal {
+			continue
 		}
+		legalMoves, best = legalMoves+1, max(best, score)
 		if outcome == childSearched && score > alpha {
 			alpha, bestMove = score, move
 			w.pv.update(n.ply, move)

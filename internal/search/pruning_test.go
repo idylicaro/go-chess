@@ -70,13 +70,13 @@ func TestHasPieces_KingAndPawnsOnlyIsZugzwangTerritory(t *testing.T) {
 func TestTryNullMove_SkippedInCheckAndWithoutPieces(t *testing.T) {
 	w := newTestWorker(boardFromFEN(t, "4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1"))
 	w.pruning = AllPruning
-	n := w.newNode(6, 1)
+	n := w.newNode(6, 1, -infinity)
 	if _, cut := w.tryNullMove(n, -1000, true); cut {
 		t.Error("null move tried with only king and pawns")
 	}
 	checked := newTestWorker(boardFromFEN(t, "4k3/8/8/8/8/8/8/R3K2r w - - 0 1"))
 	checked.pruning = AllPruning
-	if _, cut := checked.tryNullMove(checked.newNode(6, 1), -1000, true); cut {
+	if _, cut := checked.tryNullMove(checked.newNode(6, 1, -infinity), -1000, true); cut {
 		t.Error("null move tried in check")
 	}
 }

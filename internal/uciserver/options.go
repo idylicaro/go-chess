@@ -37,6 +37,16 @@ var pruningSwitches = map[string]func(pruning *search.Pruning) *bool{
 	"futility": func(p *search.Pruning) *bool { return &p.Futility },
 }
 
+// optionSetters apply the options other than the pruning switches, keyed
+// by lower-case name.
+var optionSetters = map[string]func(s *Server, value string) error{
+	"hash":       (*Server).setHash,
+	"clear hash": func(s *Server, _ string) error { s.searcher.Clear(); return nil },
+	"threads":    (*Server).setThreads,
+	"ownbook":    (*Server).setOwnBook,
+	"bookfile":   (*Server).setBookFile,
+}
+
 // handleSetOption reads "setoption name <name> [value <value>]"; names may
 // have spaces and are matched without regard to case, as UCI asks.
 func (s *Server) handleSetOption(_ context.Context, args []string) error {
@@ -46,34 +56,13 @@ func (s *Server) handleSetOption(_ context.Context, args []string) error {
 		return err
 	}
 	key := strings.ToLower(name)
-	switch {
-	case key == "hash":
-		return s.setHash(value)
-	case key == "threads":
-		return s.setThreads(value)
-	case key == "ownbook":
-		return s.setOwnBook(value)
-	case key == "bookfile":
-		return s.setBookFile(value)
-	case key == "clear hash":
-		s.searcher.Clear()
-		return nil
-	case pruningSwitches[key] != nil:
-		return s.setPruning(pruningSwitches[key], value)
+	if set, known := optionSetters[key]; known {
+		return set(s, value)
+	}
+	if field, known := pruningSwitches[key]; known {
+		return s.setPruning(field, value)
 	}
 	return fmt.Errorf("setoption: unknown option %q, expected Hash, Clear Hash, Threads, OwnBook, BookFile, NullMove, LMR or Futility", name)
-}
-
-// setPruning turns a technique on or off; it rebuilds the searcher, which
-// empties the transposition table.
-func (s *Server) setPruning(field func(pruning *search.Pruning) *bool, value string) error {
-	enabled, err := strconv.ParseBool(value)
-	if err != nil {
-		return fmt.Errorf("setoption: %q is not a check value, expected true or false", value)
-	}
-	*field(&s.options.Pruning) = enabled
-	s.searcher = s.newSearcher(s.options)
-	return nil
 }
 
 func parseSetOption(args []string) (name, value string, err error) {
@@ -127,5 +116,17 @@ func (s *Server) setBookFile(path string) error {
 		return fmt.Errorf("setoption: BookFile: %w", err)
 	}
 	s.openingBook = opening
+	return nil
+}
+
+// setPruning turns a technique on or off; it rebuilds the searcher, which
+// empties the transposition table.
+func (s *Server) setPruning(field func(pruning *search.Pruning) *bool, value string) error {
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return fmt.Errorf("setoption: %q is not a check value, expected true or false", value)
+	}
+	*field(&s.options.Pruning) = enabled
+	s.searcher = s.newSearcher(s.options)
 	return nil
 }
