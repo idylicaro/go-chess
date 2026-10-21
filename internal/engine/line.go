@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/idylicaro/go-chess/pkg/chess"
@@ -39,7 +40,9 @@ func Line(fen string, pv []string) string {
 	if fields := strings.Fields(fen); len(fields) >= 2 {
 		blackToMove = fields[1] == "b"
 		if len(fields) == 6 {
-			fmt.Sscanf(fields[5], "%d", &number)
+			if n, err := strconv.Atoi(fields[5]); err == nil && n > 0 {
+				number = n
+			}
 		}
 	}
 	var out []string

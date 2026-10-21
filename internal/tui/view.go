@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -130,7 +131,9 @@ func firstMove(fen string) (number int, blackFirst bool) {
 		blackFirst = fields[1] == "b"
 	}
 	if len(fields) == 6 {
-		fmt.Sscanf(fields[5], "%d", &number)
+		if n, err := strconv.Atoi(fields[5]); err == nil {
+			number = n
+		}
 	}
 	return max(number, 1), blackFirst
 }

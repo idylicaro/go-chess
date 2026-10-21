@@ -90,7 +90,7 @@ func newFake(t *testing.T, respond func(command string) []string) (*Engine, *fak
 				return
 			}
 			for _, line := range respond(command) {
-				io.WriteString(fromEngine, line+"\n")
+				_, _ = io.WriteString(fromEngine, line+"\n")
 			}
 		}
 	}()
@@ -193,10 +193,10 @@ func TestEngineExitIsAnError(t *testing.T) {
 		scanner := bufio.NewScanner(toEngine)
 		for scanner.Scan() {
 			if scanner.Text() == "uci" {
-				io.WriteString(fromEngine, "uciok\n")
+				_, _ = io.WriteString(fromEngine, "uciok\n")
 			}
 			if scanner.Text() == "isready" {
-				io.WriteString(fromEngine, "readyok\n")
+				_, _ = io.WriteString(fromEngine, "readyok\n")
 			}
 			if strings.HasPrefix(scanner.Text(), "go") {
 				fromEngine.Close() // engine crashes mid-search
