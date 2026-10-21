@@ -336,7 +336,7 @@ func TestPlayPGNCommand(t *testing.T) {
 
 func TestPlayResign(t *testing.T) {
 	out := play(t, "e4", "resign")
-	if !strings.Contains(out, "Black resigned - White Wins") || !strings.Contains(out, "Result: 1-0") {
+	if !strings.Contains(out, "Black resigned, White wins") || !strings.Contains(out, "Result: 1-0") {
 		t.Errorf("output:\n%s", out)
 	}
 }
@@ -376,7 +376,7 @@ func TestPlayFlagsStartFromFENAndTimeControl(t *testing.T) {
 	if !strings.Contains(out, "4k3/8/8/8/4P3/8/8/4K3 b - e3 0 1") {
 		t.Errorf("did not play from the FEN:\n%s", out)
 	}
-	if !strings.Contains(out, "White: 05:") || !strings.Contains(out, "Black: 05:00") {
+	if !regexp.MustCompile(`White\s+0[45]:\d\d`).MatchString(out) || !regexp.MustCompile(`Black\s+0[45]:\d\d`).MatchString(out) {
 		t.Errorf("no clocks:\n%s", out)
 	}
 }
@@ -570,8 +570,9 @@ func TestLastMoveAndCheckAreHighlighted(t *testing.T) {
 	}
 	// After undo the last move is the previous one: Nc6.
 	out = play(t, "e4", "e5", "Qh5", "Nc6", "Qxf7+", "undo", "exit")
-	if i := strings.LastIndex(out, "Current State"); strings.Contains(out[i:], "<k>") || !strings.Contains(out[i:], "[n]") {
-		t.Errorf("after undo:\n%s", out[i:])
+	blocks := strings.Split(out, "> Enter a move") // what was shown after each prompt
+	if last := blocks[len(blocks)-2]; strings.Contains(last, "<k>") || !strings.Contains(last, "[n]") {
+		t.Errorf("after undo:\n%s", last)
 	}
 }
 
@@ -579,5 +580,35 @@ func TestBareSquareIsAPawnMove(t *testing.T) {
 	out := play(t, "e4", "fen", "exit")
 	if !strings.Contains(out, "4P3") {
 		t.Errorf("e4 should move the pawn:\n%s", out)
+	}
+}
+
+func TestPanelListsMovesAndStatus(t *testing.T) {
+	out := play(t, "e4", "e5", "Nf3", "exit")
+	for _, want := range []string{"1. e4", "e5", "2. Nf3", "Black to move"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("panel lacks %q:\n%s", want, out)
+		}
+	}
+	// The panel sits next to the board: a rank and the panel share a line.
+	if !regexp.MustCompile(`(?m)^3 .* 3 +2\. Nf3`).MatchString(out) && !regexp.MustCompile(`(?m)^[1-8] .* [1-8] +\s*2\. Nf3`).MatchString(out) {
+		t.Errorf("panel is not beside the board:\n%s", out)
+	}
+}
+
+func TestNarrowTerminalPutsThePanelBelow(t *testing.T) {
+	_, out, _ := runEnv(t, map[string]string{"COLUMNS": "40"}, "e4\nexit\n", "play")
+	if regexp.MustCompile(`(?m)^[1-8] .* [1-8] +\S`).MatchString(out) {
+		t.Errorf("panel beside the board on a 40-column terminal:\n%s", out)
+	}
+	if !strings.Contains(out, "1. e4") {
+		t.Errorf("panel missing:\n%s", out)
+	}
+}
+
+func TestPGNCommandShowsTheMovesInThePanel(t *testing.T) {
+	_, out, _ := run(t, scholarsMate, "pgn", "-")
+	if !strings.Contains(out, "Checkmate, White wins") || !strings.Contains(out, "4. Qxf7#") {
+		t.Errorf("output:\n%s", out)
 	}
 }

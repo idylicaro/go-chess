@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/idylicaro/go-chess/internal/pgnread"
@@ -51,7 +50,9 @@ func runPGN(e env, args []string) error {
 	if len(moves) > 0 {
 		last = &moves[len(moves)-1]
 	}
-	printPosition(e.out, game, render.Options{Style: e.style(styleOpts), Material: true, Captured: parsed.Tag("FEN") == ""}, last)
+	firstNumber, blackFirst := moveNumbering(startFEN(parsed))
+	e.printPosition(game, render.Options{Style: e.style(styleOpts), Material: true, Captured: parsed.Tag("FEN") == ""},
+		render.Panel{Moves: parsed.Moves, FirstMoveNumber: firstNumber, BlackFirst: blackFirst}, last)
 	fmt.Fprintf(e.out, "FEN: %s\n", game.FEN())
 	if parsed.Result != "" {
 		fmt.Fprintf(e.out, "Result: %s\n", parsed.Result)
@@ -62,15 +63,7 @@ func runPGN(e env, args []string) error {
 // numberedMoves formats SAN moves as "1. e4 e5 2. Nf3". startFEN says whose
 // turn the first move is and which move number it has.
 func numberedMoves(moves []string, startFEN string) string {
-	blackToMove, number := false, 1
-	if fields := strings.Fields(startFEN); len(fields) >= 2 {
-		blackToMove = fields[1] == "b"
-		if len(fields) == 6 {
-			if n, err := strconv.Atoi(fields[5]); err == nil && n > 0 {
-				number = n
-			}
-		}
-	}
+	number, blackToMove := moveNumbering(startFEN)
 	var b strings.Builder
 	for i, san := range moves {
 		whiteMove := (i%2 == 0) != blackToMove

@@ -3,10 +3,9 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"io"
-	"time"
+	"strconv"
+	"strings"
 
-	"github.com/idylicaro/go-chess/internal/common"
 	"github.com/idylicaro/go-chess/internal/render"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
@@ -35,65 +34,42 @@ func (e env) style(f *styleFlags) render.Style {
 	return style
 }
 
-// printPosition writes the state line and the board, with the last move and
-// a king in check highlighted. opts carries the style, the orientation and
-// any selection; last may be nil.
-func printPosition(w io.Writer, game *chess.Game, opts render.Options, last *chess.Move) {
+// minSideBySide is the terminal width from which the panel goes beside the
+// board; below it the panel is printed under the board.
+const minSideBySide = 62
+
+// printPosition writes the board, with the last move and a king in check
+// highlighted, next to the panel. opts carries the style, the orientation
+// and any selection; last may be nil.
+func (e env) printPosition(game *chess.Game, opts render.Options, panel render.Panel, last *chess.Move) {
 	opts.LastMove = last
 	opts.Check = render.CheckSquare(game)
-	fmt.Fprint(w, stateLine(game))
-	fmt.Fprint(w, render.Board(game.GetBoard(), opts))
+	panel.Status = render.Status(game)
+	if game.HasTimer() {
+		white, _ := game.GetRemainingTime(chess.White)
+		black, _ := game.GetRemainingTime(chess.Black)
+		panel.Clocks = &render.Clocks{White: white, Black: black, Active: game.GetCurrentTurn(), Stopped: game.IsOver()}
+	}
+	board := render.Board(game.GetBoard(), opts)
+	text := board + panel.String()
+	if columns, err := strconv.Atoi(e.getenv("COLUMNS")); err != nil || columns == 0 || columns >= minSideBySide {
+		text = render.SideBySide(board, panel.String(), 3)
+	}
+	fmt.Fprintln(e.out)
+	fmt.Fprint(e.out, text)
 }
 
-// stateLine describes the state of the game and, on a timed game, the clocks.
-func stateLine(game *chess.Game) string {
-	var turn, state string
-	if game.GetCurrentTurn() == common.White {
-		turn = "White"
-	} else {
-		turn = "Black"
-	}
-
-	switch game.GetState() {
-	case chess.InProgress:
-		state = "In Progress"
-	case chess.Check:
-		state = "Check"
-	case chess.Checkmate:
-		state = "Checkmate"
-	case chess.Stalemate:
-		state = "Stalemate"
-	case chess.Draw:
-		state = "Draw (" + game.DrawReason().String() + ")"
-	case chess.ResignedWhite:
-		state = "White resigned - Black Wins"
-	case chess.ResignedBlack:
-		state = "Black resigned - White Wins"
-	case chess.TimeoutWhite:
-		state = "Timeout - Black Wins"
-	case chess.TimeoutBlack:
-		state = "Timeout - White Wins"
-	}
-
-	line := fmt.Sprintf("\n--- Current State: %s | Turn: %s ---\n", state, turn)
-	if game.HasTimer() {
-		whiteTime, err1 := game.GetRemainingTime(common.White)
-		blackTime, err2 := game.GetRemainingTime(common.Black)
-		if err1 == nil && err2 == nil {
-			line += fmt.Sprintf("⏰ White: %v | Black: %v\n", formatDuration(whiteTime), formatDuration(blackTime))
+// moveNumbering says, from the FEN a game started at, which number the first
+// move has and whether Black made it.
+func moveNumbering(startFEN string) (number int, blackFirst bool) {
+	number = 1
+	if fields := strings.Fields(startFEN); len(fields) >= 2 {
+		blackFirst = fields[1] == "b"
+		if len(fields) == 6 {
+			if n, err := strconv.Atoi(fields[5]); err == nil && n > 0 {
+				number = n
+			}
 		}
 	}
-	return line
-}
-
-// formatDuration formats a time.Duration into a human-readable string
-func formatDuration(d time.Duration) string {
-	if d < 0 {
-		return "00:00"
-	}
-
-	minutes := int(d.Minutes())
-	seconds := int(d.Seconds()) % 60
-
-	return fmt.Sprintf("%02d:%02d", minutes, seconds)
+	return number, blackFirst
 }

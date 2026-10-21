@@ -25,6 +25,7 @@ type session struct {
 	// standardStart is whether the game began from the standard position,
 	// the only one where the pieces missing from the board are captures.
 	standardStart bool
+	startFEN      string
 }
 
 // played is a move made in the session and how it reads in SAN.
@@ -45,7 +46,12 @@ func (s *session) showWith(opts render.Options) {
 	if n := len(s.history); n > 0 {
 		last = &s.history[n-1].move
 	}
-	printPosition(s.out, s.game, opts, last)
+	moves := make([]string, len(s.history))
+	for i, h := range s.history {
+		moves[i] = h.san
+	}
+	number, blackFirst := moveNumbering(s.startFEN)
+	s.printPosition(s.game, opts, render.Panel{Moves: moves, FirstMoveNumber: number, BlackFirst: blackFirst}, last)
 }
 
 // play makes a move for the side to move.
