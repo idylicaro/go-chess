@@ -73,7 +73,7 @@ func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 	return nil
 }
 
-func NewInitialBoard() IBoard {
+func newInitialBoard() IBoard {
 	// Setup initial positions for all pieces
 	initialBoard := &Board{
 		board:   [8][8]IPiece{},
@@ -81,34 +81,34 @@ func NewInitialBoard() IBoard {
 	}
 	// Pawn setup
 	for i := 0; i < 8; i++ {
-		initialBoard.board[i][6] = NewPawn(common.White)
-		initialBoard.board[i][1] = NewPawn(common.Black)
+		initialBoard.board[i][6] = newPawn(common.White)
+		initialBoard.board[i][1] = newPawn(common.Black)
 	}
 	// Rook setup
-	initialBoard.board[0][7] = NewRook(common.White)
-	initialBoard.board[7][7] = NewRook(common.White)
-	initialBoard.board[0][0] = NewRook(common.Black)
-	initialBoard.board[7][0] = NewRook(common.Black)
+	initialBoard.board[0][7] = newRook(common.White)
+	initialBoard.board[7][7] = newRook(common.White)
+	initialBoard.board[0][0] = newRook(common.Black)
+	initialBoard.board[7][0] = newRook(common.Black)
 
 	// Knight setup
-	initialBoard.board[1][7] = NewKnight(common.White)
-	initialBoard.board[6][7] = NewKnight(common.White)
-	initialBoard.board[1][0] = NewKnight(common.Black)
-	initialBoard.board[6][0] = NewKnight(common.Black)
+	initialBoard.board[1][7] = newKnight(common.White)
+	initialBoard.board[6][7] = newKnight(common.White)
+	initialBoard.board[1][0] = newKnight(common.Black)
+	initialBoard.board[6][0] = newKnight(common.Black)
 
 	// Bishop setup
-	initialBoard.board[2][7] = NewBishop(common.White)
-	initialBoard.board[5][7] = NewBishop(common.White)
-	initialBoard.board[2][0] = NewBishop(common.Black)
-	initialBoard.board[5][0] = NewBishop(common.Black)
+	initialBoard.board[2][7] = newBishop(common.White)
+	initialBoard.board[5][7] = newBishop(common.White)
+	initialBoard.board[2][0] = newBishop(common.Black)
+	initialBoard.board[5][0] = newBishop(common.Black)
 
 	// Queen setup
-	initialBoard.board[3][7] = NewQueen(common.White)
-	initialBoard.board[3][0] = NewQueen(common.Black)
+	initialBoard.board[3][7] = newQueen(common.White)
+	initialBoard.board[3][0] = newQueen(common.Black)
 
 	// King setup
-	initialBoard.board[4][7] = NewKing(common.White)
-	initialBoard.board[4][0] = NewKing(common.Black)
+	initialBoard.board[4][7] = newKing(common.White)
+	initialBoard.board[4][0] = newKing(common.Black)
 	initialBoard.kingPos[common.White] = Position{X: 4, Y: 7}
 	initialBoard.kingPos[common.Black] = Position{X: 4, Y: 0}
 
@@ -125,7 +125,7 @@ func (b *Board) RemovePiece(x int, y int) error {
 	return nil
 }
 
-func NewBoard(board *[8][8]IPiece) IBoard {
+func newBoard(board *[8][8]IPiece) IBoard {
 	if board == nil {
 		return &Board{
 			board:   [8][8]IPiece{},

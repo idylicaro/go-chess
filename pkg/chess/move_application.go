@@ -87,6 +87,6 @@ func newPromotedPiece(promotion common.PieceType, color common.Color) IPiece {
 	case common.Rook, common.Bishop, common.Knight:
 		return newPiece(promotion, color)
 	default:
-		return NewQueen(color)
+		return newQueen(color)
 	}
 }

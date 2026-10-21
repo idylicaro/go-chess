@@ -45,7 +45,7 @@ const (
 
 func NewGame() *Game {
 	return &Game{
-		board:           NewInitialBoard(),
+		board:           newInitialBoard(),
 		currentTurn:     common.White,
 		state:           InProgress,
 		enPassantTarget: nil,
@@ -232,7 +232,7 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 
 	// 1. Obtenha todos os movimentos possíveis da peça (válidos, mas não necessariamente legais)
 	var possibleMoves []Position
-	if pawn, ok := piece.(*Pawn); ok {
+	if pawn, ok := piece.(*pawnPiece); ok {
 		possibleMoves = pawn.GetValidMovesWithEnPassant(fromX, fromY, g.board, g.enPassantTarget)
 	} else {
 		possibleMoves = piece.GetValidMoves(fromX, fromY, g.board)

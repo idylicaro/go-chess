@@ -3,7 +3,7 @@ package chess
 import "testing"
 
 func TestCoordinateConverter_ToAlgebraic(t *testing.T) {
-	cc := &CoordinateConverter{}
+	cc := &coordinateConverter{}
 
 	tests := []struct {
 		name     string
@@ -35,7 +35,7 @@ func TestCoordinateConverter_ToAlgebraic(t *testing.T) {
 }
 
 func TestCoordinateConverter_FromAlgebraic(t *testing.T) {
-	cc := &CoordinateConverter{}
+	cc := &coordinateConverter{}
 
 	tests := []struct {
 		name                 string

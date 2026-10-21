@@ -18,7 +18,7 @@ func mustParseUCI(t *testing.T, notation string) uci.Move {
 // legalTargets returns the algebraic squares the piece on from can legally move to.
 func legalTargets(t *testing.T, game *Game, from string) map[string]bool {
 	t.Helper()
-	converter := &CoordinateConverter{}
+	converter := &coordinateConverter{}
 	x, y, err := converter.FromAlgebraic(from)
 	if err != nil {
 		t.Fatalf("invalid square %q: %v", from, err)
@@ -55,8 +55,8 @@ func TestCastling_AllowedWhenPathIsSafe(t *testing.T) {
 
 func TestKing_CannotCaptureDefendedPiece(t *testing.T) {
 	game := newGameFromSquares(t, map[string]IPiece{
-		"e1": NewKing(common.White), "a8": NewKing(common.Black),
-		"e2": NewQueen(common.Black), "e8": NewRook(common.Black),
+		"e1": newKing(common.White), "a8": newKing(common.Black),
+		"e2": newQueen(common.Black), "e8": newRook(common.Black),
 	})
 	assertLegal(t, legalTargets(t, game, "e1"), "e2", false)
 }
@@ -65,8 +65,8 @@ func TestKing_CannotCaptureDefendedPiece(t *testing.T) {
 // en passant, so a capture exposing the own king along the rank was allowed.
 func TestEnPassant_RejectedWhenItExposesKing(t *testing.T) {
 	game := newGameFromSquares(t, map[string]IPiece{
-		"a5": NewKing(common.White), "e5": NewPawn(common.White),
-		"d5": NewPawn(common.Black), "h5": NewRook(common.Black), "h8": NewKing(common.Black),
+		"a5": newKing(common.White), "e5": newPawn(common.White),
+		"d5": newPawn(common.Black), "h5": newRook(common.Black), "h8": newKing(common.Black),
 	})
 	game.enPassantTarget = &Position{X: 3, Y: 2} // d6, after ...d7-d5
 	targets := legalTargets(t, game, "e5")
@@ -76,8 +76,8 @@ func TestEnPassant_RejectedWhenItExposesKing(t *testing.T) {
 
 func TestEnPassant_AllowedAndRemovesCapturedPawn(t *testing.T) {
 	game := newGameFromSquares(t, map[string]IPiece{
-		"e1": NewKing(common.White), "e5": NewPawn(common.White),
-		"d5": NewPawn(common.Black), "h8": NewKing(common.Black),
+		"e1": newKing(common.White), "e5": newPawn(common.White),
+		"d5": newPawn(common.Black), "h8": newKing(common.Black),
 	})
 	game.enPassantTarget = &Position{X: 3, Y: 2} // d6
 	assertLegal(t, legalTargets(t, game, "e5"), "d6", true)

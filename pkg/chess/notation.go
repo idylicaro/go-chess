@@ -140,11 +140,11 @@ func (g *Game) isSideToMoveInCheck() bool {
 
 // sanPieceLetter is "" for pawns and N/B/R/Q/K otherwise.
 func sanPieceLetter(pieceType common.PieceType) string {
-	return (&CoordinateConverter{}).GetPieceSymbol(pieceType)
+	return (&coordinateConverter{}).GetPieceSymbol(pieceType)
 }
 
 // squareName formats internal coordinates known to be on the board, e.g. "e4".
 func squareName(x, y int) string {
-	square, _ := (&CoordinateConverter{}).ToAlgebraic(x, y)
+	square, _ := (&coordinateConverter{}).ToAlgebraic(x, y)
 	return square
 }

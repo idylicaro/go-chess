@@ -19,28 +19,28 @@ func TestBoard_AddPiece(t *testing.T) {
 	}{
 		{
 			name:         "Add pawn to empty square",
-			initialBoard: NewBoard(nil).(*Board),
-			pieceToAdd:   NewPawn(common.White),
+			initialBoard: newBoard(nil).(*Board),
+			pieceToAdd:   newPawn(common.White),
 			x:            0, y: 0,
 			expectedErr: nil,
-			expectPiece: NewPawn(common.White),
+			expectPiece: newPawn(common.White),
 		},
 		{
 			name: "Add rook to occupied square",
 			initialBoard: func() *Board {
-				b := NewBoard(nil)
-				_ = b.AddPiece(NewPawn(common.White), 0, 0)
+				b := newBoard(nil)
+				_ = b.AddPiece(newPawn(common.White), 0, 0)
 				return b.(*Board)
 			}(),
-			pieceToAdd: NewRook(common.Black),
+			pieceToAdd: newRook(common.Black),
 			x:          0, y: 0,
 			expectedErr: errors.New("cannot add a piece at (0, 0): the square is occupied"),
-			expectPiece: NewPawn(common.White), // Should still be the pawn
+			expectPiece: newPawn(common.White), // Should still be the pawn
 		},
 		{
 			name:         "Add piece to invalid coordinates",
-			initialBoard: NewBoard(nil).(*Board),
-			pieceToAdd:   NewKing(common.White),
+			initialBoard: newBoard(nil).(*Board),
+			pieceToAdd:   newKing(common.White),
 			x:            -1, y: 0,
 			expectedErr: errors.New("invalid coordinates (-1, 0): expected both between 0 and 7"),
 			expectPiece: nil,
@@ -86,8 +86,8 @@ func TestBoard_RemovePiece(t *testing.T) {
 		{
 			name: "Remove pawn from occupied square",
 			initialBoard: func() *Board {
-				b := NewBoard(nil)
-				_ = b.AddPiece(NewPawn(common.White), 0, 0)
+				b := newBoard(nil)
+				_ = b.AddPiece(newPawn(common.White), 0, 0)
 				return b.(*Board)
 			}(),
 			x: 0, y: 0,
@@ -95,13 +95,13 @@ func TestBoard_RemovePiece(t *testing.T) {
 		},
 		{
 			name:         "Remove piece from empty square",
-			initialBoard: NewBoard(nil).(*Board),
+			initialBoard: newBoard(nil).(*Board),
 			x:            0, y: 0,
 			expectedErr: nil, // Should not error, just make sure it's nil
 		},
 		{
 			name:         "Remove piece from invalid coordinates",
-			initialBoard: NewBoard(nil).(*Board),
+			initialBoard: newBoard(nil).(*Board),
 			x:            -1, y: 0,
 			expectedErr: errors.New("invalid coordinates (-1, 0): expected both between 0 and 7"),
 		},
@@ -140,8 +140,8 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move Pawn to empty square",
 			initialBoard: func() *Board {
-				b := NewBoard(nil)
-				_ = b.AddPiece(NewPawn(common.White), 0, 6)
+				b := newBoard(nil)
+				_ = b.AddPiece(newPawn(common.White), 0, 6)
 				b.SetKingPosition(common.White, 4, 7) // Set king pos
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
@@ -156,9 +156,9 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move Rook to capture opponent",
 			initialBoard: func() *Board {
-				b := NewBoard(nil)
-				_ = b.AddPiece(NewRook(common.White), 0, 7)
-				_ = b.AddPiece(NewPawn(common.Black), 0, 5)
+				b := newBoard(nil)
+				_ = b.AddPiece(newRook(common.White), 0, 7)
+				_ = b.AddPiece(newPawn(common.Black), 0, 5)
 				b.SetKingPosition(common.White, 4, 7) // Set king pos
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
@@ -173,8 +173,8 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move King and update KingPosition",
 			initialBoard: func() *Board {
-				b := NewBoard(nil)
-				_ = b.AddPiece(NewKing(common.White), 4, 7)
+				b := newBoard(nil)
+				_ = b.AddPiece(newKing(common.White), 4, 7)
 				b.SetKingPosition(common.White, 4, 7) // Initial king pos
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
@@ -189,7 +189,7 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move from empty square",
 			initialBoard: func() *Board {
-				b := NewBoard(nil)
+				b := newBoard(nil)
 				b.SetKingPosition(common.White, 4, 7)
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
@@ -204,8 +204,8 @@ func TestBoard_MovePiece(t *testing.T) {
 		{
 			name: "Move to invalid coordinates",
 			initialBoard: func() *Board {
-				b := NewBoard(nil)
-				_ = b.AddPiece(NewPawn(common.White), 0, 6)
+				b := newBoard(nil)
+				_ = b.AddPiece(newPawn(common.White), 0, 6)
 				b.SetKingPosition(common.White, 4, 7)
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
