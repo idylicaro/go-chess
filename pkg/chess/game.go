@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+// Game is a chess game: the board, whose turn it is, the rules that end it
+// and, optionally, a clock. Create one with NewGame, NewTimedGame or ParseFEN.
+// A Game is not safe for concurrent use.
 type Game struct {
 	board           IBoard
 	currentTurn     common.Color
@@ -29,8 +32,12 @@ type Game struct {
 // fiftyMoveRulePlies is 50 moves per side; halfMoveClock counts plies (#5).
 const fiftyMoveRulePlies = 100
 
+// GameState is the coarse state of a game. Result and DrawReason give the
+// outcome in PGN terms.
 type GameState int
 
+// Values of GameState. Check is a game still in progress with the side to
+// move in check; Draw, the timeouts and the resignations are final.
 const (
 	InProgress GameState = iota
 	Check
@@ -43,6 +50,7 @@ const (
 	ResignedBlack
 )
 
+// NewGame creates an untimed game from the standard starting position.
 func NewGame() *Game {
 	return &Game{
 		board:           newInitialBoard(),
@@ -68,14 +76,17 @@ func NewTimedGame(timeConfig timer.TimeConfig, clock timer.Clock) *Game {
 	return game
 }
 
+// GetCurrentTurn returns the side to move.
 func (g *Game) GetCurrentTurn() common.Color {
 	return g.currentTurn
 }
 
+// GetState returns the current state of the game.
 func (g *Game) GetState() GameState {
 	return g.state
 }
 
+// GetBoard returns the live board, for display. Do not modify it.
 func (g *Game) GetBoard() IBoard {
 	return g.board
 }
@@ -89,6 +100,7 @@ func (g *Game) StartTimer() error {
 	return nil
 }
 
+// GetRemainingTime returns the time left for color, or an error on an untimed game.
 func (g *Game) GetRemainingTime(color common.Color) (time.Duration, error) {
 	if g.gameTimer == nil {
 		return 0, fmt.Errorf("no timer configured for this game")
@@ -96,6 +108,7 @@ func (g *Game) GetRemainingTime(color common.Color) (time.Duration, error) {
 	return g.gameTimer.GetRemainingTime(color), nil
 }
 
+// PauseTimer stops the running clock; it errors on an untimed game.
 func (g *Game) PauseTimer() error {
 	if g.gameTimer == nil {
 		return fmt.Errorf("no timer configured for this game")
@@ -104,6 +117,7 @@ func (g *Game) PauseTimer() error {
 	return nil
 }
 
+// ResumeTimer restarts a paused clock; it errors on an untimed game.
 func (g *Game) ResumeTimer() error {
 	if g.gameTimer == nil {
 		return fmt.Errorf("no timer configured for this game")
@@ -112,10 +126,14 @@ func (g *Game) ResumeTimer() error {
 	return nil
 }
 
+// HasTimer reports whether the game was created with a clock.
 func (g *Game) HasTimer() bool {
 	return g.gameTimer != nil
 }
 
+// Move plays a legal move for the side to move and updates the state. It
+// returns an error, leaving the game unchanged, if the move is illegal or the
+// game is over. A pawn move to the last rank without Promotion promotes to a queen.
 func (g *Game) Move(move uci.Move) error {
 	defer func(start time.Time) {
 		debug.LogTiming("Game.Move", start)
@@ -524,7 +542,7 @@ func (g *Game) GetDebugInfo() map[string]interface{} {
 	return info
 }
 
-// String methods for debug output
+// String names the state, for logs and the CLI.
 func (gs GameState) String() string {
 	switch gs {
 	case InProgress:

@@ -56,6 +56,7 @@ var ErrNoMoveToUndo = errors.New("no move to undo")
 // Result is the outcome of a game, in PGN terms.
 type Result int
 
+// Results of a game.
 const (
 	ResultOngoing Result = iota
 	ResultWhiteWins
@@ -80,6 +81,7 @@ func (r Result) String() string {
 // DrawReason says why a game ended in a draw.
 type DrawReason int
 
+// Reasons a game can end in a draw.
 const (
 	DrawNone DrawReason = iota
 	DrawStalemate
@@ -92,6 +94,7 @@ const (
 	DrawTimeoutVsInsufficientMaterial
 )
 
+// String names the draw reason; DrawNone is "None".
 func (r DrawReason) String() string {
 	switch r {
 	case DrawStalemate:

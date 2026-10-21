@@ -10,6 +10,7 @@ import (
 // have lost its rights, which piece flags cannot express.
 type CastlingRights uint8
 
+// The four castles, combined with | into a CastlingRights set.
 const (
 	WhiteKingSide CastlingRights = 1 << iota
 	WhiteQueenSide

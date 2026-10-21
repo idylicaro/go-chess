@@ -4,6 +4,7 @@ import (
 	"github.com/idylicaro/go-chess/internal/common"
 )
 
+// IPiece is a piece on the board.
 type IPiece interface {
 	GetColor() common.Color
 	GetType() common.PieceType
@@ -11,15 +12,18 @@ type IPiece interface {
 	Copy() IPiece
 }
 
+// Piece holds the color and type shared by every piece.
 type Piece struct {
 	Type  common.PieceType
 	Color common.Color
 }
 
+// GetColor returns the side the piece belongs to.
 func (p *Piece) GetColor() common.Color {
 	return p.Color
 }
 
+// GetType returns the kind of piece.
 func (p *Piece) GetType() common.PieceType {
 	return p.Type
 }
