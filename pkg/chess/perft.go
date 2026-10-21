@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"idylicaro/go-chess/internal/uci"
 )
 
@@ -48,7 +48,7 @@ func (g *Game) Divide(depth int) map[string]int {
 // childAfter returns a copy of the game with move played.
 func (g *Game) childAfter(move uci.Move) *Game {
 	child := g.clone()
-	if err := child.Move(move); err != nil {
+	if err := child.play(move); err != nil {
 		panic(fmt.Sprintf("perft: legal move %s rejected in position %q: %v", move, g.FEN(), err))
 	}
 	return child
@@ -62,6 +62,8 @@ func (g *Game) clone() *Game {
 	child.gameTimer = nil
 	child.positionHistory = nil
 	child.moveHistory = nil
+	child.undoStack = nil
+	child.drawOfferedBy = nil
 	if g.enPassantTarget != nil {
 		target := *g.enPassantTarget
 		child.enPassantTarget = &target

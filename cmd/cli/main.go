@@ -3,10 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"idylicaro/go-chess/internal/chess"
 	"idylicaro/go-chess/internal/debug"
-	"idylicaro/go-chess/internal/timer"
-	"idylicaro/go-chess/internal/uci"
+	"idylicaro/go-chess/pkg/chess"
 	"os"
 	"strings"
 )
@@ -35,24 +33,24 @@ func main() {
 
 			if scanner.Scan() {
 				choice := strings.TrimSpace(scanner.Text())
-				var timeConfig timer.TimeConfig
+				var timeConfig chess.TimeConfig
 
 				switch choice {
 				case "1":
-					timeConfig = timer.Blitz3Plus2
+					timeConfig = chess.Blitz3Plus2
 					fmt.Println("Selected: Blitz 3+2")
 				case "2":
-					timeConfig = timer.Rapid10Plus0
+					timeConfig = chess.Rapid10Plus0
 					fmt.Println("Selected: Rapid 10+0")
 				case "3":
-					timeConfig = timer.Classical90Plus30
+					timeConfig = chess.Classical90Plus30
 					fmt.Println("Selected: Classical 90+30")
 				default:
-					timeConfig = timer.Blitz3Plus2
+					timeConfig = chess.Blitz3Plus2
 					fmt.Println("Default: Blitz 3+2")
 				}
 
-				game = chess.NewTimedGame(timeConfig, timer.SystemClock{})
+				game = chess.NewTimedGame(timeConfig, chess.SystemClock{})
 				err := game.StartTimer()
 				if err != nil {
 					fmt.Printf("Error starting timer: %v\n", err)
@@ -73,7 +71,7 @@ func main() {
 		DisplayGameState(game)
 		DisplayBoard(game.GetBoard(), nil)
 
-		fmt.Printf("> Enter your move (%s): ", game.GetCurrentTurn().String())
+		fmt.Printf("> Enter a move, or resign|draw|accept|decline|undo|moves (%s): ", game.GetCurrentTurn().String())
 		if !scanner.Scan() {
 			break
 		}
@@ -83,12 +81,18 @@ func main() {
 			fmt.Println("Exiting game.")
 			return
 		}
+		if runCommand(game, input) {
+			if game.IsOver() {
+				finish(game)
+				return
+			}
+			continue
+		}
 
 		// 3. Convert the input to UCI format
-		move, err := uci.ParseMove(input)
-		fmt.Println(move)
+		move, err := chess.ParseMove(input)
 		if err != nil {
-			fmt.Printf("Error: %v. Please enter a move in UCI format (e.g., e2e4)\n", err)
+			fmt.Printf("Error: %v\n", err)
 			continue
 		}
 
@@ -99,16 +103,47 @@ func main() {
 			continue
 		}
 
-		// Check the GameState to see if the game has ended
-		if game.GetState() == chess.Checkmate ||
-			game.GetState() == chess.Stalemate ||
-			game.GetState() == chess.Draw ||
-			game.GetState() == chess.TimeoutWhite ||
-			game.GetState() == chess.TimeoutBlack {
-			DisplayGameState(game)
-			DisplayBoard(game.GetBoard(), nil)
-			fmt.Println("Game over!")
+		if game.IsOver() {
+			finish(game)
 			return
 		}
 	}
+}
+
+// runCommand handles the non-move commands and reports whether input was one.
+func runCommand(game *chess.Game, input string) bool {
+	turn := game.GetCurrentTurn()
+	var err error
+	switch input {
+	case "resign":
+		err = game.Resign(turn)
+	case "draw":
+		err = game.OfferDraw(turn)
+		if err == nil {
+			fmt.Printf("%v offers a draw. The opponent can type \"accept\" or \"decline\".\n", turn)
+		}
+	case "accept":
+		err = game.AcceptDraw(turn)
+	case "decline":
+		err = game.DeclineDraw(turn)
+	case "undo":
+		err = game.Undo()
+	case "moves":
+		for _, move := range game.LegalMoves() {
+			fmt.Printf("%s ", move)
+		}
+		fmt.Println()
+	default:
+		return false
+	}
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
+	return true
+}
+
+func finish(game *chess.Game) {
+	DisplayGameState(game)
+	DisplayBoard(game.GetBoard(), nil)
+	fmt.Printf("Game over! Result: %s\n", game.Result())
 }

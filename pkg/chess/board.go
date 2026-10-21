@@ -1,9 +1,8 @@
 package chess
 
 import (
-	"errors"
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 )
 
 type Position struct {
@@ -56,7 +55,7 @@ func (b *Board) MovePiece(fromX int, fromY int, toX int, toY int) error {
 	}
 
 	if piece == nil {
-		return errors.New("could not get piece from (" + fmt.Sprintf("%d, %d", fromX, fromY) + "): no piece found at coordinates")
+		return fmt.Errorf("cannot move from (%d, %d): there is no piece there", fromX, fromY)
 	}
 
 	err = b.RemovePiece(toX, toY)
@@ -155,7 +154,7 @@ func (b *Board) AddPiece(piece IPiece, x, y int) error {
 	}
 
 	if b.board[x][y] != nil {
-		return errors.New("there is already a piece")
+		return fmt.Errorf("cannot add a piece at (%d, %d): the square is occupied", x, y)
 	}
 
 	b.board[x][y] = piece
@@ -174,7 +173,7 @@ func (b *Board) SetPiece(piece IPiece, x, y int) error {
 
 func (b *Board) IsValidCoordinates(x, y int) error {
 	if x < 0 || x > 7 || y < 0 || y > 7 {
-		return errors.New("invalid coordinates")
+		return fmt.Errorf("invalid coordinates (%d, %d): expected both between 0 and 7", x, y)
 	}
 	return nil
 }

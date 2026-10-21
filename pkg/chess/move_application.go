@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"idylicaro/go-chess/internal/uci"
 )
 
@@ -18,7 +18,7 @@ func applyMoveToBoard(board IBoard, move uci.Move, enPassantTarget *Position) er
 		return err
 	}
 	if piece == nil {
-		return fmt.Errorf("no piece at (%d,%d) to move to (%d,%d)", move.FromX, move.FromY, move.ToX, move.ToY)
+		return fmt.Errorf("move %s: there is no piece on %s", move, squareName(move.FromX, move.FromY))
 	}
 	if isCastlingMove(piece, move) {
 		if err := moveCastlingRook(board, move); err != nil {
@@ -72,10 +72,10 @@ func isPromotionMove(piece IPiece, move uci.Move) bool {
 // promotePawn replaces the pawn with the requested piece on the last rank.
 func promotePawn(board IBoard, move uci.Move, color common.Color) error {
 	if err := board.RemovePiece(move.FromX, move.FromY); err != nil {
-		return fmt.Errorf("failed to remove pawn during promotion: %v", err)
+		return fmt.Errorf("move %s: failed to remove the promoting pawn: %w", move, err)
 	}
 	if err := board.SetPiece(newPromotedPiece(move.Promotion, color), move.ToX, move.ToY); err != nil {
-		return fmt.Errorf("failed to set promoted piece: %v", err)
+		return fmt.Errorf("move %s: failed to place the promoted piece: %w", move, err)
 	}
 	return nil
 }

@@ -1,7 +1,7 @@
 package chess
 
 import (
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"idylicaro/go-chess/internal/timer"
 	"idylicaro/go-chess/internal/timer/timertest"
 	"idylicaro/go-chess/internal/uci"

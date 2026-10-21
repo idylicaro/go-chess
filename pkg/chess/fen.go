@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"strconv"
 	"strings"
 	"unicode"

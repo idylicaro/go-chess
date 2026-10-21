@@ -1,7 +1,7 @@
 package uci
 
 import (
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"testing"
 )
 

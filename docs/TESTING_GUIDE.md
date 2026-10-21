@@ -8,13 +8,13 @@ This guide covers testing, benchmarking, and debugging for the chess engine.
 
 ```bash
 # Run all integration tests
-go test -v ./internal/chess -run "Integration"
+go test -v ./pkg/chess -run "Integration"
 
 # Run specific test
-go test -v ./internal/chess -run "TestGameWithTimerIntegration"
+go test -v ./pkg/chess -run "TestGameWithTimerIntegration"
 
 # Run with coverage
-go test -v -cover ./internal/chess
+go test -v -cover ./pkg/chess
 ```
 
 The test suite includes:
@@ -31,10 +31,10 @@ six positions (initial, Kiwipete, positions 3–6).
 
 ```bash
 # Shallow depths (<= 10k nodes) run with the normal suite
-go test ./internal/chess -run Perft
+go test ./pkg/chess -run Perft
 
 # Every reference depth (~16M nodes, about a minute)
-make perft            # same as: go test -tags perft -run Perft ./internal/chess
+make perft            # same as: go test -tags perft -run Perft ./pkg/chess
 ```
 
 When a count is wrong, split it by first move and diff against a reference
@@ -53,13 +53,13 @@ for move, nodes := range game.Divide(3) {
 
 ```bash
 # Basic benchmark
-go test -bench=. ./internal/chess
+go test -bench=. ./pkg/chess
 
 # With memory stats
-go test -bench=. -benchmem ./internal/chess
+go test -bench=. -benchmem ./pkg/chess
 
 # Specific benchmark
-go test -bench=BenchmarkMoveGeneration ./internal/chess
+go test -bench=BenchmarkMoveGeneration ./pkg/chess
 ```
 
 ### Automated Script
@@ -134,7 +134,7 @@ go run cmd/cli/*.go
 ```go
 package main
 
-import "idylicaro/go-chess/internal/chess"
+import "idylicaro/go-chess/pkg/chess"
 
 func main() {
     // Initialize debug
@@ -227,7 +227,7 @@ go tool pprof .reports/mem.prof
 # 2. Make your changes
 
 # 3. Run tests
-go test ./internal/chess
+go test ./pkg/chess
 
 # 4. Run benchmarks
 ./scripts/benchmark.sh --integration -c baseline/benchmark_results.txt
@@ -240,7 +240,7 @@ open performance_report.html
 TODO: add CI workflow
 ```bash
 # Add to pipeline
-go test -v ./internal/chess
+go test -v ./pkg/chess
 ./scripts/benchmark.sh --integration -o artifacts/
 ```
 

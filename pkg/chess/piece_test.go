@@ -1,7 +1,7 @@
 package chess
 
 import (
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"reflect"
 	"testing"
 )

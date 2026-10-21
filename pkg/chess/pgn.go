@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"strings"
 )
 
@@ -30,7 +30,7 @@ func (g *Game) PGN(headers PGNHeaders) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	result := g.pgnResult()
+	result := g.Result().String()
 	movetext := wrapPGNTokens(append(numberedMoveTokens(start, sanMoves), result), pgnLineWidth)
 	return g.pgnTagSection(headers, result) + "\n" + movetext + "\n", nil
 }
@@ -71,29 +71,6 @@ func numberedMoveTokens(start *Game, sanMoves []string) []string {
 		turn = opposite(turn)
 	}
 	return tokens
-}
-
-// pgnResult is "1-0", "0-1", "1/2-1/2" or "*" for a game still in progress.
-func (g *Game) pgnResult() string {
-	switch g.state {
-	case Checkmate:
-		return winnerResult(opposite(g.currentTurn))
-	case TimeoutWhite:
-		return winnerResult(common.Black)
-	case TimeoutBlack:
-		return winnerResult(common.White)
-	case Stalemate, Draw:
-		return "1/2-1/2"
-	default:
-		return "*"
-	}
-}
-
-func winnerResult(winner common.Color) string {
-	if winner == common.White {
-		return "1-0"
-	}
-	return "0-1"
 }
 
 func (g *Game) pgnTagSection(headers PGNHeaders, result string) string {

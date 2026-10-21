@@ -107,7 +107,7 @@ echo ""
 # Function to run integration tests
 run_integration_tests() {
     echo -e "${BLUE}Running Integration Tests...${NC}"
-    if go test -v ./internal/chess -run "TestGameIntegration|TestGameWithTimerIntegration|TestCastlingIntegration|TestEnPassantIntegration" > "$OUTPUT_DIR/integration_results.txt" 2>&1; then
+    if go test -v ./pkg/chess -run "TestGameIntegration|TestGameWithTimerIntegration|TestCastlingIntegration|TestEnPassantIntegration" > "$OUTPUT_DIR/integration_results.txt" 2>&1; then
         echo -e "${GREEN}✓ Integration tests passed${NC}"
     else
         echo -e "${RED}✗ Integration tests failed${NC}"
@@ -135,7 +135,7 @@ run_benchmarks() {
     echo "Running $RUNS benchmark iterations..."
     for i in $(seq 1 $RUNS); do
         echo -e "  ${YELLOW}Iteration $i/$RUNS${NC}"
-        go test -bench="$TEST_PATTERN" -benchmem -count=1 $bench_flags ./internal/chess >> "$OUTPUT_DIR/$BENCHMARK_OUTPUT" 2>&1
+        go test -bench="$TEST_PATTERN" -benchmem -count=1 $bench_flags ./pkg/chess >> "$OUTPUT_DIR/$BENCHMARK_OUTPUT" 2>&1
     done
     
     echo -e "${GREEN}✓ Benchmarks completed${NC}"

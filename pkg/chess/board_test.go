@@ -3,7 +3,7 @@ package chess
 
 import (
 	"errors"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"testing"
 	// Verifique o caminho real do seu pacote common
 )
@@ -34,7 +34,7 @@ func TestBoard_AddPiece(t *testing.T) {
 			}(),
 			pieceToAdd: NewRook(common.Black),
 			x:          0, y: 0,
-			expectedErr: errors.New("there is already a piece"),
+			expectedErr: errors.New("cannot add a piece at (0, 0): the square is occupied"),
 			expectPiece: NewPawn(common.White), // Should still be the pawn
 		},
 		{
@@ -42,7 +42,7 @@ func TestBoard_AddPiece(t *testing.T) {
 			initialBoard: NewBoard(nil).(*Board),
 			pieceToAdd:   NewKing(common.White),
 			x:            -1, y: 0,
-			expectedErr: errors.New("invalid coordinates"),
+			expectedErr: errors.New("invalid coordinates (-1, 0): expected both between 0 and 7"),
 			expectPiece: nil,
 		},
 	}
@@ -103,7 +103,7 @@ func TestBoard_RemovePiece(t *testing.T) {
 			name:         "Remove piece from invalid coordinates",
 			initialBoard: NewBoard(nil).(*Board),
 			x:            -1, y: 0,
-			expectedErr: errors.New("invalid coordinates"),
+			expectedErr: errors.New("invalid coordinates (-1, 0): expected both between 0 and 7"),
 		},
 	}
 
@@ -195,7 +195,7 @@ func TestBoard_MovePiece(t *testing.T) {
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 0, toX: 0, toY: 1,
-			expectedErr: errors.New("could not get piece from (0, 0): no piece found at coordinates"), // Customize if your GetPiece returns 'no piece found' error
+			expectedErr: errors.New("cannot move from (0, 0): there is no piece there"), // Customize if your GetPiece returns 'no piece found' error
 			expectedKingPos: map[common.Color]Position{
 				common.White: {X: 4, Y: 7},
 				common.Black: {X: 4, Y: 0},
@@ -211,7 +211,7 @@ func TestBoard_MovePiece(t *testing.T) {
 				return b.(*Board)
 			}(),
 			fromX: 0, fromY: 6, toX: 0, toY: 8, // Invalid Y coordinate
-			expectedErr: errors.New("invalid coordinates"),
+			expectedErr: errors.New("invalid coordinates (0, 8): expected both between 0 and 7"),
 			expectedKingPos: map[common.Color]Position{
 				common.White: {X: 4, Y: 7},
 				common.Black: {X: 4, Y: 0},

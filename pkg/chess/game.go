@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	common "idylicaro/go-chess/internal/common"
+	"idylicaro/go-chess/internal/common"
 	"idylicaro/go-chess/internal/debug"
 	"idylicaro/go-chess/internal/timer"
 	"idylicaro/go-chess/internal/uci"
@@ -21,7 +21,9 @@ type Game struct {
 	positionHistory map[string]int   // For threefold repetition
 	moveHistory     []uci.Move       // For move history tracking
 	gameTimer       *timer.GameTimer // Timer control
-	//TODO: Draw Reason
+	drawReason      DrawReason       // Why the game is drawn; DrawNone otherwise
+	drawOfferedBy   *common.Color    // Side with a pending draw offer, if any
+	undoStack       []gameSnapshot   // One entry per move played with Move, for Undo
 }
 
 // fiftyMoveRulePlies is 50 moves per side; halfMoveClock counts plies (#5).
@@ -37,6 +39,8 @@ const (
 	Draw
 	TimeoutWhite
 	TimeoutBlack
+	ResignedWhite
+	ResignedBlack
 )
 
 func NewGame() *Game {
@@ -120,14 +124,41 @@ func (g *Game) Move(move uci.Move) error {
 	moveStr := fmt.Sprintf("(%d,%d)->(%d,%d)", move.FromX, move.FromY, move.ToX, move.ToY)
 	debug.NewChessDebugger().LogMove(moveStr, g.currentTurn.String(), g.state)
 
+	if g.IsOver() {
+		return fmt.Errorf("move %s rejected, the game is already over (%s): %w", move, g.Result(), ErrGameOver)
+	}
 	if err := g.rejectIfOutOfTime(); err != nil {
 		return err
 	}
 
-	pieceToMove, _ := g.board.GetPiece(move.FromX, move.FromY)
+	snapshot := g.snapshot()
+	if err := g.play(move); err != nil {
+		return err
+	}
+	g.undoStack = append(g.undoStack, snapshot)
 
-	if pieceToMove == nil || pieceToMove.GetColor() != g.currentTurn {
-		return fmt.Errorf("not your piece or not your turn")
+	debugger := debug.NewChessDebugger()
+	debugger.LogGameState(g)
+	if boardFormatter, ok := g.board.(debug.BoardFormatter); ok {
+		debugger.LogBoard(boardFormatter)
+	}
+
+	return nil
+}
+
+// play applies a move without the game-over, clock and undo bookkeeping of
+// Move. Search code (perft, PGN replay) uses it on throwaway copies.
+func (g *Game) play(move uci.Move) error {
+	pieceToMove, err := g.board.GetPiece(move.FromX, move.FromY)
+	if err != nil {
+		return fmt.Errorf("move %s: %w", move, err)
+	}
+
+	if pieceToMove == nil {
+		return fmt.Errorf("move %s: there is no piece on %s", move, squareName(move.FromX, move.FromY))
+	}
+	if pieceToMove.GetColor() != g.currentTurn {
+		return fmt.Errorf("move %s: the piece on %s is %v's but it is %v's turn", move, squareName(move.FromX, move.FromY), pieceToMove.GetColor(), g.currentTurn)
 	}
 
 	legalMoves, err := g.getLegalMovesForPiece(move.FromX, move.FromY)
@@ -143,7 +174,7 @@ func (g *Game) Move(move uci.Move) error {
 		}
 	}
 	if !isLegal {
-		return fmt.Errorf("illegal move: king would be in check or move is not valid")
+		return fmt.Errorf("illegal move %s for %v in position %q: the piece cannot go there or it would leave the king in check (see LegalMoves)", move, g.currentTurn, g.FEN())
 	}
 
 	targetPiece, _ := g.board.GetPiece(move.ToX, move.ToY)
@@ -173,6 +204,7 @@ func (g *Game) Move(move uci.Move) error {
 	}
 
 	g.moveHistory = append(g.moveHistory, move)
+	g.drawOfferedBy = nil
 
 	// Switch turn first
 	nextTurn := g.getOpponentColor()
@@ -186,12 +218,6 @@ func (g *Game) Move(move uci.Move) error {
 
 	g.updateGameState()
 
-	debugger := debug.NewChessDebugger()
-	debugger.LogGameState(g)
-	if boardFormatter, ok := g.board.(debug.BoardFormatter); ok {
-		debugger.LogBoard(boardFormatter)
-	}
-
 	return nil
 }
 
@@ -201,7 +227,7 @@ func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 		return nil, err
 	}
 	if piece.GetColor() != g.currentTurn {
-		return nil, fmt.Errorf("this piece is not your color")
+		return nil, fmt.Errorf("the piece on %s is %v's but it is %v's turn", squareName(fromX, fromY), piece.GetColor(), g.currentTurn)
 	}
 
 	// 1. Obtenha todos os movimentos possíveis da peça (válidos, mas não necessariamente legais)
@@ -271,30 +297,66 @@ func (g *Game) getAllLegalMoves(color common.Color) []Position {
 // anything on the board changes. Previously the clock was only checked after
 // the move had been applied, using stale banked time, so it never fired (#6).
 func (g *Game) rejectIfOutOfTime() error {
-	if state, timedOut := g.timeoutState(); timedOut {
-		g.state = state
-		return fmt.Errorf("game over: %v ran out of time (state %v)", g.currentTurn, state)
+	if state, reason, timedOut := g.timeoutOutcome(); timedOut {
+		g.endGame(state, reason)
+		return fmt.Errorf("move rejected, the game is over (%s, %s): %w", g.Result(), state, ErrGameOver)
 	}
 	return nil
 }
 
-// timeoutState returns TimeoutWhite/TimeoutBlack when either clock has run out.
-func (g *Game) timeoutState() (GameState, bool) {
+// timeoutOutcome reports how the game ends if either clock has run out: a
+// loss on time for the flagged side, or a draw when the other side could not
+// checkmate even with the flagged side's help (FIDE 6.9).
+func (g *Game) timeoutOutcome() (GameState, DrawReason, bool) {
 	if g.gameTimer == nil {
-		return InProgress, false
+		return InProgress, DrawNone, false
 	}
-	if g.gameTimer.IsTimeout(common.White) {
-		return TimeoutWhite, true
+	for _, flagged := range []common.Color{common.White, common.Black} {
+		if !g.gameTimer.IsTimeout(flagged) {
+			continue
+		}
+		if !g.canPossiblyMate(opposite(flagged)) {
+			return Draw, DrawTimeoutVsInsufficientMaterial, true
+		}
+		if flagged == common.White {
+			return TimeoutWhite, DrawNone, true
+		}
+		return TimeoutBlack, DrawNone, true
 	}
-	if g.gameTimer.IsTimeout(common.Black) {
-		return TimeoutBlack, true
+	return InProgress, DrawNone, false
+}
+
+// canPossiblyMate reports whether color has enough material for some legal
+// sequence of moves to end in checkmate against the opponent. A lone minor
+// piece qualifies only if the opponent has something besides a king, which
+// could block the king's escape squares.
+func (g *Game) canPossiblyMate(color common.Color) bool {
+	minors, opponentHasPieces := 0, false
+	for x := 0; x < 8; x++ {
+		for y := 0; y < 8; y++ {
+			piece, _ := g.board.GetPiece(x, y)
+			if piece == nil || piece.GetType() == common.King {
+				continue
+			}
+			if piece.GetColor() != color {
+				opponentHasPieces = true
+				continue
+			}
+			switch piece.GetType() {
+			case common.Bishop, common.Knight:
+				minors++
+			default:
+				return true
+			}
+		}
 	}
-	return InProgress, false
+	return minors >= 2 || (minors == 1 && opponentHasPieces)
 }
 
 func (g *Game) updateGameState() {
-	if state, timedOut := g.timeoutState(); timedOut {
-		g.state = state
+	g.drawReason = DrawNone
+	if state, reason, timedOut := g.timeoutOutcome(); timedOut {
+		g.state, g.drawReason = state, reason
 		return
 	}
 
@@ -311,26 +373,33 @@ func (g *Game) updateGameState() {
 	} else {
 		if len(allLegalMoves) == 0 {
 			g.state = Stalemate
+			g.drawReason = DrawStalemate
 		} else {
 			g.state = InProgress
 		}
 	}
-	if g.isDraw() {
-		g.state = Draw
+	// Checkmate ends the game before any draw rule can apply to it.
+	if g.state == Checkmate {
+		return
+	}
+	if reason := g.automaticDrawReason(); reason != DrawNone {
+		g.state, g.drawReason = Draw, reason
 	}
 }
 
-func (g *Game) isDraw() bool {
-	if g.halfMoveClock >= fiftyMoveRulePlies {
-		return true
+// automaticDrawReason returns the draw rule that currently applies, or DrawNone.
+// It also records the position for the repetition count.
+func (g *Game) automaticDrawReason() DrawReason {
+	repeated := g.isThreefoldRepetition()
+	switch {
+	case g.halfMoveClock >= fiftyMoveRulePlies:
+		return DrawFiftyMoveRule
+	case repeated:
+		return DrawThreefoldRepetition
+	case g.isInsufficientMaterial():
+		return DrawInsufficientMaterial
 	}
-	if g.isThreefoldRepetition() {
-		return true
-	}
-	if g.isInsufficientMaterial() {
-		return true
-	}
-	return false
+	return DrawNone
 }
 
 func (g *Game) isThreefoldRepetition() bool {
@@ -472,6 +541,10 @@ func (gs GameState) String() string {
 		return "TimeoutWhite"
 	case TimeoutBlack:
 		return "TimeoutBlack"
+	case ResignedWhite:
+		return "ResignedWhite"
+	case ResignedBlack:
+		return "ResignedBlack"
 	default:
 		return "Unknown"
 	}
