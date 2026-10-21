@@ -63,7 +63,7 @@ func (w *lineWriter) printf(format string, args ...any) {
 //	})
 //	err := server.Run(ctx, os.Stdin)
 func New(identity Identity, out io.Writer, newSearcher SearcherFactory) *Server {
-	options := search.Options{HashMB: search.DefaultHashMB}
+	options := search.DefaultOptions()
 	return &Server{
 		identity:    identity,
 		out:         &lineWriter{out: out},

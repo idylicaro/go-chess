@@ -224,3 +224,20 @@ func TestServer_DrivenByTheProjectsUCIClient(t *testing.T) {
 		t.Errorf("search = %+v, %v (engine %q), want a move from the test engine", result, err, client.Name)
 	}
 }
+
+func TestServer_PruningOptionsReachTheSearcher(t *testing.T) {
+	var built []search.Options
+	server := New(Identity{}, io.Discard, func(options search.Options) *search.Searcher {
+		built = append(built, options)
+		return testSearcher(options)
+	})
+	if built[0].Pruning != search.AllPruning {
+		t.Fatalf("default pruning = %+v, want every technique on", built[0].Pruning)
+	}
+	for _, command := range []string{"setoption name NullMove value false", "setoption name lmr value false", "setoption name Futility value maybe"} {
+		server.handle(context.Background(), command)
+	}
+	if got := built[len(built)-1].Pruning; got != (search.Pruning{Futility: true}) {
+		t.Errorf("pruning after the options = %+v, want only Futility", got)
+	}
+}

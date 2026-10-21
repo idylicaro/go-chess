@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/idylicaro/go-chess/internal/search"
 )
 
 // Hash option bounds, in megabytes.
@@ -17,6 +19,17 @@ const (
 var optionDeclarations = []string{
 	fmt.Sprintf("option name Hash type spin default 16 min %d max %d", minHashMB, maxHashMB),
 	"option name Clear Hash type button",
+	"option name NullMove type check default true",
+	"option name LMR type check default true",
+	"option name Futility type check default true",
+}
+
+// pruningSwitches map the check options to the technique they turn on or
+// off, so lab #44 can match the engine against itself without one.
+var pruningSwitches = map[string]func(pruning *search.Pruning) *bool{
+	"nullmove": func(p *search.Pruning) *bool { return &p.NullMove },
+	"lmr":      func(p *search.Pruning) *bool { return &p.LateMoveReductions },
+	"futility": func(p *search.Pruning) *bool { return &p.Futility },
 }
 
 // handleSetOption reads "setoption name <name> [value <value>]"; names may
@@ -27,14 +40,29 @@ func (s *Server) handleSetOption(_ context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	switch strings.ToLower(name) {
-	case "hash":
+	key := strings.ToLower(name)
+	switch {
+	case key == "hash":
 		return s.setHash(value)
-	case "clear hash":
+	case key == "clear hash":
 		s.searcher.Clear()
 		return nil
+	case pruningSwitches[key] != nil:
+		return s.setPruning(pruningSwitches[key], value)
 	}
-	return fmt.Errorf("setoption: unknown option %q, expected Hash or Clear Hash", name)
+	return fmt.Errorf("setoption: unknown option %q, expected Hash, Clear Hash, NullMove, LMR or Futility", name)
+}
+
+// setPruning turns a technique on or off; it rebuilds the searcher, which
+// empties the transposition table.
+func (s *Server) setPruning(field func(pruning *search.Pruning) *bool, value string) error {
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return fmt.Errorf("setoption: %q is not a check value, expected true or false", value)
+	}
+	*field(&s.options.Pruning) = enabled
+	s.searcher = s.newSearcher(s.options)
+	return nil
 }
 
 func parseSetOption(args []string) (name, value string, err error) {

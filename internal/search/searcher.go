@@ -46,9 +46,16 @@ type Result struct {
 	PV    []chess.SearchMove
 }
 
-// Options configure a Searcher; the zero value uses the defaults.
+// Options configure a Searcher. The zero value is a plain alpha-beta search
+// with a DefaultHashMB table; DefaultOptions is what the engine plays with.
 type Options struct {
-	HashMB int // transposition table size; 0 means DefaultHashMB
+	HashMB  int // transposition table size; 0 means DefaultHashMB
+	Pruning Pruning
+}
+
+// DefaultOptions are the engine's settings.
+func DefaultOptions() Options {
+	return Options{HashMB: DefaultHashMB, Pruning: AllPruning}
 }
 
 // Searcher runs searches with one evaluation function and keeps its
@@ -57,6 +64,7 @@ type Options struct {
 type Searcher struct {
 	evaluate Evaluator
 	tt       *transpositionTable
+	pruning  Pruning
 	now      func() time.Time
 }
 
@@ -69,7 +77,7 @@ func New(evaluate Evaluator, options Options) *Searcher {
 	if hashMB <= 0 {
 		hashMB = DefaultHashMB
 	}
-	return &Searcher{evaluate: evaluate, tt: newTranspositionTable(hashMB), now: time.Now}
+	return &Searcher{evaluate: evaluate, tt: newTranspositionTable(hashMB), pruning: options.Pruning, now: time.Now}
 }
 
 // Clear forgets what earlier searches learned, for a new game.
@@ -87,6 +95,7 @@ func (s *Searcher) Search(ctx context.Context, board *chess.SearchBoard, limits 
 		stop.withDeadline(start.Add(budget.hard), s.now)
 	}
 	w := newWorker(board.Clone(), s.evaluate, stop, s.tt)
+	w.pruning = s.pruning
 	result := s.deepen(w, maxDepth(limits), budget, start, report)
 	return finish(result, w.totalNodes())
 }

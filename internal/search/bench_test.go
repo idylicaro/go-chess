@@ -16,22 +16,25 @@ var benchmarkFENs = map[string]string{
 }
 
 // benchmarkDepth is deep enough that move ordering and pruning show.
-const benchmarkDepth = 5
+const benchmarkDepth = 7
 
 // BenchmarkSearch is the reference measure of the search: nodes searched to
 // a fixed depth (lower is better pruning) and nodes per second.
 //
 //	go test ./internal/search -run '^$' -bench Search
 func BenchmarkSearch(b *testing.B) {
-	for name, fen := range benchmarkFENs {
-		b.Run(name, func(b *testing.B) {
-			board := boardFromFEN(b, fen)
-			var nodes int64
-			for range b.N {
-				nodes = New(eval.Evaluate, Options{}).Search(context.Background(), board, Limits{Depth: benchmarkDepth}, nil).Nodes
-			}
-			b.ReportMetric(float64(nodes), "nodes")
-			b.ReportMetric(float64(nodes)*float64(b.N)/b.Elapsed().Seconds(), "nodes/s")
-		})
+	for _, config := range pruningConfigs {
+		for name, fen := range benchmarkFENs {
+			b.Run(config.name+"/"+name, func(b *testing.B) {
+				board := boardFromFEN(b, fen)
+				var nodes int64
+				for range b.N {
+					searcher := New(eval.Evaluate, Options{Pruning: config.pruning})
+					nodes = searcher.Search(context.Background(), board, Limits{Depth: benchmarkDepth}, nil).Nodes
+				}
+				b.ReportMetric(float64(nodes), "nodes")
+				b.ReportMetric(float64(nodes)*float64(b.N)/b.Elapsed().Seconds(), "nodes/s")
+			})
+		}
 	}
 }
