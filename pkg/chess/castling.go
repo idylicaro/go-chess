@@ -2,7 +2,6 @@ package chess
 
 import (
 	"github.com/idylicaro/go-chess/internal/common"
-	"github.com/idylicaro/go-chess/internal/uci"
 )
 
 // CastlingRights is the set of castles still available, as in the FEN
@@ -51,29 +50,22 @@ func (r CastlingRights) Has(other CastlingRights) bool {
 // afterMove drops the rights a move destroys: any king move loses both of its
 // sides, and any move from or to a rook's home corner loses that side (this
 // covers the rook moving away and the rook being captured).
-func (r CastlingRights) afterMove(piece IPiece, move uci.Move) CastlingRights {
-	from := Position{X: move.FromX, Y: move.FromY}
-	to := Position{X: move.ToX, Y: move.ToY}
+func (r CastlingRights) afterMove(mover pieceCode, from, to int) CastlingRights {
+	if r == NoCastlingRights {
+		return r
+	}
 	for _, side := range castlingSides {
-		kingMoved := piece.GetType() == common.King && piece.GetColor() == side.color
-		if kingMoved || from == side.rookFrom || to == side.rookFrom {
+		rookSquare := squareIndex(side.rookFrom.X, side.rookFrom.Y)
+		kingMoved := mover == codeOf(common.King, side.color)
+		if kingMoved || from == rookSquare || to == rookSquare {
 			r &^= side.right
 		}
 	}
 	return r
 }
 
-// castlingMoves returns the king destinations of every castle currently
-// legal for the side to move, except the final check on the destination
-// square, which the regular legality simulation performs.
-func (g *Game) castlingMoves(kingFrom Position) []Position {
-	var destinations []Position
-	for _, side := range castlingSides {
-		if side.color == g.currentTurn && side.kingFrom == kingFrom && g.canCastle(side) {
-			destinations = append(destinations, side.kingTo)
-		}
-	}
-	return destinations
+func (side castlingSide) kingFromSquare() int {
+	return squareIndex(side.kingFrom.X, side.kingFrom.Y)
 }
 
 // canCastle checks rights, piece placement, empty squares between king and

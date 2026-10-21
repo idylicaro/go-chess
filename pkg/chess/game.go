@@ -163,124 +163,78 @@ func (g *Game) Move(move uci.Move) error {
 }
 
 // play applies a move without the game-over, clock and undo bookkeeping of
-// Move. Search code (perft, PGN replay) uses it on throwaway copies.
+// Move. Search code (PGN replay, SAN suffixes) uses it on throwaway copies.
 func (g *Game) play(move uci.Move) error {
-	pieceToMove, err := g.board.GetPiece(move.FromX, move.FromY)
-	if err != nil {
-		return fmt.Errorf("move %s: %w", move, err)
-	}
-
-	if pieceToMove == nil {
-		return fmt.Errorf("%w: move %s: there is no piece on %s", ErrIllegalMove, move, squareName(move.FromX, move.FromY))
-	}
-	if pieceToMove.GetColor() != g.currentTurn {
-		return fmt.Errorf("%w: move %s: the piece on %s is %v's but it is %v's turn", ErrIllegalMove, move, squareName(move.FromX, move.FromY), pieceToMove.GetColor(), g.currentTurn)
-	}
-
-	legalMoves, err := g.getLegalMovesForPiece(move.FromX, move.FromY)
-	if err != nil {
+	if err := g.requireOwnPieceOn(move); err != nil {
 		return err
 	}
-
-	isLegal := false
-	for _, legalMove := range legalMoves {
-		if legalMove.X == move.ToX && legalMove.Y == move.ToY {
-			isLegal = true
-			break
-		}
-	}
-	if !isLegal {
+	legal, ok := g.findGenMove(move)
+	if !ok {
 		return fmt.Errorf("%w: %s for %v in position %q: the piece cannot go there or it would leave the king in check (see LegalMoves)", ErrIllegalMove, move, g.currentTurn, g.FEN())
 	}
-
-	targetPiece, _ := g.board.GetPiece(move.ToX, move.ToY)
-	if targetPiece != nil || pieceToMove.GetType() == common.Pawn {
-		g.halfMoveClock = 0
-	} else {
-		g.halfMoveClock++
-	}
-
-	if err := applyMoveToBoard(g.board, move, g.enPassantTarget); err != nil {
-		return err
-	}
-	g.castlingRights = g.castlingRights.afterMove(pieceToMove, move)
-	if g.currentTurn == common.Black {
-		g.fullMoveNumber++
-	}
-
-	// Clear en passant target of last move
-	g.enPassantTarget = nil
-	// En passant Check
-	if pieceToMove.GetType() == common.Pawn {
-		deltaY := move.ToY - move.FromY
-		if (pieceToMove.GetColor() == common.White && deltaY == -2) || (pieceToMove.GetColor() == common.Black && deltaY == 2) {
-			targetY := move.FromY + deltaY/2
-			g.enPassantTarget = &Position{X: move.ToX, Y: targetY}
-		}
-	}
-
+	g.makeMove(legal)
 	g.moveHistory = append(g.moveHistory, move)
 	g.drawOfferedBy = nil
-
-	// Switch turn first
-	nextTurn := g.getOpponentColor()
-
 	if g.gameTimer != nil {
-		g.gameTimer.SwitchPlayer(nextTurn)
+		g.gameTimer.SwitchPlayer(g.currentTurn)
 	}
-
-	// Update current turn
-	g.currentTurn = nextTurn
-
 	g.updateGameState()
-
 	return nil
 }
 
+// requireOwnPieceOn explains why a move from an empty or enemy square fails.
+func (g *Game) requireOwnPieceOn(move uci.Move) error {
+	piece, err := g.board.GetPiece(move.FromX, move.FromY)
+	if err != nil {
+		return fmt.Errorf("move %s: %w", move, err)
+	}
+	if piece == nil {
+		return fmt.Errorf("%w: move %s: there is no piece on %s", ErrIllegalMove, move, squareName(move.FromX, move.FromY))
+	}
+	if piece.GetColor() != g.currentTurn {
+		return fmt.Errorf("%w: move %s: the piece on %s is %v's but it is %v's turn", ErrIllegalMove, move, squareName(move.FromX, move.FromY), piece.GetColor(), g.currentTurn)
+	}
+	return nil
+}
+
+// findGenMove returns the legal move matching move, with a missing or
+// invalid promotion piece read as a queen.
+func (g *Game) findGenMove(move uci.Move) (genMove, bool) {
+	if g.board.IsValidCoordinates(move.ToX, move.ToY) != nil {
+		return genMove{}, false
+	}
+	wanted := genMove{
+		from:      int8(squareIndex(move.FromX, move.FromY)),
+		to:        int8(squareIndex(move.ToX, move.ToY)),
+		promotion: g.normalizedPromotion(move),
+	}
+	var buffer [maxMovesPerPosition]genMove
+	for _, legal := range g.appendLegalMoves(buffer[:0]) {
+		if legal == wanted {
+			return legal, true
+		}
+	}
+	return genMove{}, false
+}
+
+// getLegalMovesForPiece lists the squares the piece on (fromX, fromY) can
+// legally reach; a promotion counts once, whatever the piece.
 func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
 	piece, err := g.board.GetPiece(fromX, fromY)
 	if err != nil {
 		return nil, err
 	}
-	if piece.GetColor() != g.currentTurn {
-		return nil, fmt.Errorf("the piece on %s is %v's but it is %v's turn", squareName(fromX, fromY), piece.GetColor(), g.currentTurn)
+	if piece == nil || piece.GetColor() != g.currentTurn {
+		return nil, fmt.Errorf("the square %s holds no piece of %v, whose turn it is", squareName(fromX, fromY), g.currentTurn)
 	}
-
-	// 1. Obtenha todos os movimentos possíveis da peça (válidos, mas não necessariamente legais)
-	var possibleMoves []Position
-	if pawn, ok := piece.(*pawnPiece); ok {
-		possibleMoves = pawn.GetValidMovesWithEnPassant(fromX, fromY, g.board, g.enPassantTarget)
-	} else {
-		possibleMoves = piece.GetValidMoves(fromX, fromY, g.board)
-	}
-	if piece.GetType() == common.King {
-		possibleMoves = append(possibleMoves, g.castlingMoves(Position{X: fromX, Y: fromY})...)
-	}
-
-	var legalMoves []Position
-	for _, move := range possibleMoves {
-		// 2. Crie uma CÓPIA do tabuleiro para simular o movimento
-		boardCopy := g.board.Copy()
-
-		// 3. Simule o movimento na cópia — com roque, en passant e promoção completos (#4)
-		simulated := uci.Move{FromX: fromX, FromY: fromY, ToX: move.X, ToY: move.Y}
-		moveErr := applyMoveToBoard(boardCopy, simulated, g.enPassantTarget)
-		if moveErr != nil {
-			continue
-		}
-
-		// 4. Encontre a nova posição do rei
-		kingX, kingY := boardCopy.GetKingPosition(g.currentTurn)
-
-		// 5. Verifique se o rei está em xeque na cópia do tabuleiro
-		isAttacked := boardCopy.IsSquareAttacked(kingX, kingY, g.getOpponentColor())
-		if !isAttacked {
-			// Se o rei não está em xeque, o movimento é legal
-			legalMoves = append(legalMoves, move)
+	from := int8(squareIndex(fromX, fromY))
+	var destinations []Position
+	for _, move := range g.appendLegalMoves(nil) {
+		if move.from == from && (move.promotion == common.Pawn || move.promotion == common.Queen) {
+			destinations = append(destinations, squarePositions[move.to])
 		}
 	}
-
-	return legalMoves, nil
+	return destinations, nil
 }
 
 func (g *Game) getOpponentColor() common.Color {
@@ -292,21 +246,6 @@ func opposite(color common.Color) common.Color {
 		return common.Black
 	}
 	return common.White
-}
-
-// getAllLegalMoves returns a slice of all legal move positions for the given color.
-func (g *Game) getAllLegalMoves(color common.Color) []Position {
-	var allMoves []Position
-	for x := 0; x < 8; x++ {
-		for y := 0; y < 8; y++ {
-			piece, _ := g.board.GetPiece(x, y)
-			if piece != nil && piece.GetColor() == color {
-				moves, _ := g.getLegalMovesForPiece(x, y)
-				allMoves = append(allMoves, moves...)
-			}
-		}
-	}
-	return allMoves
 }
 
 // rejectIfOutOfTime blocks a move by a side whose clock has run out, before
@@ -342,33 +281,6 @@ func (g *Game) timeoutOutcome() (GameState, DrawReason, bool) {
 	return InProgress, DrawNone, false
 }
 
-// canPossiblyMate reports whether color has enough material for some legal
-// sequence of moves to end in checkmate against the opponent. A lone minor
-// piece qualifies only if the opponent has something besides a king, which
-// could block the king's escape squares.
-func (g *Game) canPossiblyMate(color common.Color) bool {
-	minors, opponentHasPieces := 0, false
-	for x := 0; x < 8; x++ {
-		for y := 0; y < 8; y++ {
-			piece, _ := g.board.GetPiece(x, y)
-			if piece == nil || piece.GetType() == common.King {
-				continue
-			}
-			if piece.GetColor() != color {
-				opponentHasPieces = true
-				continue
-			}
-			switch piece.GetType() {
-			case common.Bishop, common.Knight:
-				minors++
-			default:
-				return true
-			}
-		}
-	}
-	return minors >= 2 || (minors == 1 && opponentHasPieces)
-}
-
 func (g *Game) updateGameState() {
 	g.drawReason = DrawNone
 	if state, reason, timedOut := g.timeoutOutcome(); timedOut {
@@ -376,18 +288,18 @@ func (g *Game) updateGameState() {
 		return
 	}
 
-	allLegalMoves := g.getAllLegalMoves(g.currentTurn)
+	hasLegalMove := g.hasLegalMove()
 
 	isInCheck := g.isSideToMoveInCheck()
 
 	if isInCheck {
-		if len(allLegalMoves) == 0 {
+		if !hasLegalMove {
 			g.state = Checkmate
 		} else {
 			g.state = Check
 		}
 	} else {
-		if len(allLegalMoves) == 0 {
+		if !hasLegalMove {
 			g.state = Stalemate
 			g.drawReason = DrawStalemate
 		} else {
@@ -455,64 +367,6 @@ func (g *Game) generatePositionHash() string {
 
 	hash += fmt.Sprintf("castle:%d", g.castlingRights)
 	return hash
-}
-
-// placedPiece is a non-king piece together with the square it stands on.
-type placedPiece struct {
-	pieceType common.PieceType
-	position  Position
-}
-
-// isInsufficientMaterial reports whether neither side can ever deliver mate.
-// Covers: bare kings, a single knight, and any number of bishops (either side)
-// all standing on squares of the same color — which includes K+B vs K and
-// K+B vs K+B with same-colored bishops (#2).
-//
-//	game.isInsufficientMaterial() // true for K+B(c1) vs K+B(f8)
-func (g *Game) isInsufficientMaterial() bool {
-	material := g.collectNonKingPieces()
-	if len(material) == 0 {
-		return true
-	}
-	if len(material) == 1 && material[0].pieceType == common.Knight {
-		return true
-	}
-	return allBishopsOnSameSquareColor(material)
-}
-
-// collectNonKingPieces lists every piece on the board except the kings.
-func (g *Game) collectNonKingPieces() []placedPiece {
-	var material []placedPiece
-	for x := 0; x < 8; x++ {
-		for y := 0; y < 8; y++ {
-			piece, _ := g.board.GetPiece(x, y)
-			if piece == nil || piece.GetType() == common.King {
-				continue
-			}
-			material = append(material, placedPiece{piece.GetType(), Position{x, y}})
-		}
-	}
-	return material
-}
-
-// allBishopsOnSameSquareColor is true when material is non-empty, made only of
-// bishops, and every bishop stands on the same square color.
-func allBishopsOnSameSquareColor(material []placedPiece) bool {
-	if len(material) == 0 {
-		return false
-	}
-	firstSquareColor := squareColor(material[0].position)
-	for _, placed := range material {
-		if placed.pieceType != common.Bishop || squareColor(placed.position) != firstSquareColor {
-			return false
-		}
-	}
-	return true
-}
-
-// squareColor returns 0 for light squares and 1 for dark squares.
-func squareColor(position Position) int {
-	return (position.X + position.Y) % 2
 }
 
 // GetDebugInfo implements debug.GameStateProvider

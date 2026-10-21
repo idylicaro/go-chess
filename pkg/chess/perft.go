@@ -11,21 +11,30 @@ var promotionChoices = []common.PieceType{common.Queen, common.Rook, common.Bish
 
 // Perft counts the leaf nodes of the legal move tree to the given depth.
 // It is the standard correctness check for move generation: compare the
-// result with published reference counts (#8). It panics if a move it
-// generated as legal is then rejected, since that is a move-generator bug.
+// result with published reference counts (#8). It searches a copy with
+// make/unmake, so the game itself is left untouched (#12).
 //
 //	NewGame().Perft(3) // 8902
 func (g *Game) Perft(depth int) int {
+	return g.clone().perft(depth)
+}
+
+// perft plays and takes back each move on g itself; the move lists live in
+// stack buffers, so a search does not allocate.
+func (g *Game) perft(depth int) int {
 	if depth <= 0 {
 		return 1
 	}
-	moves := g.legalUCIMoves()
+	var buffer [maxMovesPerPosition]genMove
+	moves := g.appendLegalMoves(buffer[:0])
 	if depth == 1 {
 		return len(moves)
 	}
 	nodes := 0
 	for _, move := range moves {
-		nodes += g.childAfter(move).Perft(depth - 1)
+		undo := g.makeMove(move)
+		nodes += g.perft(depth - 1)
+		g.unmakeMove(move, undo)
 	}
 	return nodes
 }
@@ -39,8 +48,11 @@ func (g *Game) Divide(depth int) map[string]int {
 	if depth <= 0 {
 		return counts
 	}
-	for _, move := range g.legalUCIMoves() {
-		counts[move.String()] = g.childAfter(move).Perft(depth - 1)
+	search := g.clone()
+	for _, move := range search.appendLegalMoves(nil) {
+		undo := search.makeMove(move)
+		counts[move.toUCI().String()] = search.perft(depth - 1)
+		search.unmakeMove(move, undo)
 	}
 	return counts
 }
@@ -75,32 +87,11 @@ func (g *Game) clone() *Game {
 // legalUCIMoves lists every legal move of the side to move, expanding each
 // promotion into its four piece choices.
 func (g *Game) legalUCIMoves() []uci.Move {
-	var moves []uci.Move
-	for x := 0; x < 8; x++ {
-		for y := 0; y < 8; y++ {
-			moves = append(moves, g.legalUCIMovesFrom(x, y)...)
-		}
-	}
-	return moves
-}
-
-func (g *Game) legalUCIMovesFrom(fromX, fromY int) []uci.Move {
-	piece, _ := g.board.GetPiece(fromX, fromY)
-	if piece == nil || piece.GetColor() != g.currentTurn {
-		return nil
-	}
-	destinations, _ := g.getLegalMovesForPiece(fromX, fromY)
-	var moves []uci.Move
-	for _, to := range destinations {
-		move := uci.Move{FromX: fromX, FromY: fromY, ToX: to.X, ToY: to.Y}
-		if !isPromotionMove(piece, move) {
-			moves = append(moves, move)
-			continue
-		}
-		for _, promotion := range promotionChoices {
-			move.Promotion = promotion
-			moves = append(moves, move)
-		}
+	var buffer [maxMovesPerPosition]genMove
+	generated := g.appendLegalMoves(buffer[:0])
+	moves := make([]uci.Move, len(generated))
+	for i, move := range generated {
+		moves[i] = move.toUCI()
 	}
 	return moves
 }
