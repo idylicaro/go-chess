@@ -1,54 +1,48 @@
 package cli
 
 import (
+	"flag"
 	"fmt"
-	"github.com/idylicaro/go-chess/internal/common"
-	"github.com/idylicaro/go-chess/pkg/chess"
 	"io"
 	"time"
+
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/render"
+	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
-func displayBoard(w io.Writer, b chess.IBoard, validMoves []chess.Position, flipped bool) {
-	fmt.Fprintln(w, "  -----------------")
-	for row := 0; row < 8; row++ {
-		y := row
-		if flipped {
-			y = 7 - row
-		}
-		fmt.Fprintf(w, "%d |", 8-y)
-		for col := 0; col < 8; col++ {
-			x := col
-			if flipped {
-				x = 7 - col
-			}
-			piece, err := b.GetPiece(x, y)
-			if err == nil && piece != nil {
-				fmt.Fprintf(w, " %s", getPieceChar(piece))
-			} else {
-				isMove := false
-				for _, move := range validMoves {
-					if move.X == x && move.Y == y {
-						fmt.Fprintf(w, " x")
-						isMove = true
-						break
-					}
-				}
-				if !isMove {
-					fmt.Fprintf(w, " .")
-				}
-			}
-		}
-		fmt.Fprintln(w, " |")
-	}
-	fmt.Fprintln(w, "  -----------------")
-	if flipped {
-		fmt.Fprintln(w, "    h g f e d c b a")
-	} else {
-		fmt.Fprintln(w, "    a b c d e f g h")
-	}
+// styleFlags are the flags that choose how boards are drawn.
+type styleFlags struct {
+	noColor, ascii bool
 }
 
-func displayGameState(w io.Writer, game *chess.Game) {
+func addStyleFlags(fs *flag.FlagSet) *styleFlags {
+	f := &styleFlags{}
+	fs.BoolVar(&f.noColor, "no-color", false, "print the board without colors")
+	fs.BoolVar(&f.ascii, "ascii", false, "draw pieces with letters instead of Unicode symbols")
+	return f
+}
+
+// style is what the terminal supports, narrowed by the flags.
+func (e env) style(f *styleFlags) render.Style {
+	style := render.DetectStyle(e.out, e.getenv)
+	if f.noColor {
+		style.Color = false
+	}
+	if f.ascii {
+		style.Unicode = false
+	}
+	return style
+}
+
+// printPosition writes the state line and the board.
+func printPosition(w io.Writer, game *chess.Game, style render.Style, flipped bool) {
+	fmt.Fprint(w, stateLine(game))
+	fmt.Fprint(w, render.Board(game.GetBoard(), render.Options{Style: style, Flipped: flipped}))
+}
+
+// stateLine describes the state of the game and, on a timed game, the clocks.
+func stateLine(game *chess.Game) string {
 	var turn, state string
 	if game.GetCurrentTurn() == common.White {
 		turn = "White"
@@ -77,56 +71,15 @@ func displayGameState(w io.Writer, game *chess.Game) {
 		state = "Timeout - White Wins"
 	}
 
-	fmt.Fprintf(w, "\n--- Current State: %s | Turn: %s ---\n", state, turn)
-
-	// Display timer information if available
+	line := fmt.Sprintf("\n--- Current State: %s | Turn: %s ---\n", state, turn)
 	if game.HasTimer() {
 		whiteTime, err1 := game.GetRemainingTime(common.White)
 		blackTime, err2 := game.GetRemainingTime(common.Black)
-
 		if err1 == nil && err2 == nil {
-			fmt.Fprintf(w, "⏰ White: %v | Black: %v\n",
-				formatDuration(whiteTime),
-				formatDuration(blackTime))
+			line += fmt.Sprintf("⏰ White: %v | Black: %v\n", formatDuration(whiteTime), formatDuration(blackTime))
 		}
 	}
-}
-
-// getPieceChar converts a piece to its character representation
-func getPieceChar(piece chess.IPiece) string {
-	switch piece.GetType() {
-	case common.Pawn:
-		if piece.GetColor() == common.White {
-			return "P"
-		}
-		return "p"
-	case common.Rook:
-		if piece.GetColor() == common.White {
-			return "R"
-		}
-		return "r"
-	case common.Knight:
-		if piece.GetColor() == common.White {
-			return "N"
-		}
-		return "n"
-	case common.Bishop:
-		if piece.GetColor() == common.White {
-			return "B"
-		}
-		return "b"
-	case common.Queen:
-		if piece.GetColor() == common.White {
-			return "Q"
-		}
-		return "q"
-	case common.King:
-		if piece.GetColor() == common.White {
-			return "K"
-		}
-		return "k"
-	}
-	return " "
+	return line
 }
 
 // formatDuration formats a time.Duration into a human-readable string

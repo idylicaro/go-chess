@@ -12,6 +12,7 @@ import (
 func runPGN(e env, args []string) error {
 	fs := newFlagSet(e, "pgn", "[flags] <file|->", "Read a PGN file (or standard input with -), replay it and show its tags,\nmoves in SAN and the final position.")
 	number := fs.Int("game", 1, "which game of the file to show, counting from 1")
+	styleOpts := addStyleFlags(fs)
 	rest, err := parseFlags(fs, args)
 	if err != nil {
 		return err
@@ -45,8 +46,7 @@ func runPGN(e env, args []string) error {
 	fmt.Fprintln(e.out)
 	fmt.Fprintln(e.out, numberedMoves(parsed.Moves, startFEN(parsed)))
 	fmt.Fprintln(e.out)
-	displayGameState(e.out, game)
-	displayBoard(e.out, game.GetBoard(), nil, false)
+	printPosition(e.out, game, e.style(styleOpts), false)
 	fmt.Fprintf(e.out, "FEN: %s\n", game.FEN())
 	if parsed.Result != "" {
 		fmt.Fprintf(e.out, "Result: %s\n", parsed.Result)

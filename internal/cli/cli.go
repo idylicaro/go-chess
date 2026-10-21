@@ -19,6 +19,8 @@ type env struct {
 	out io.Writer
 	err io.Writer
 	now func() time.Time
+	// getenv reads environment variables, for terminal detection.
+	getenv func(string) string
 }
 
 // usageError is a mistake in how the command was invoked (exit status 2).
@@ -49,7 +51,12 @@ var commands = []command{
 //
 //	os.Exit(cli.Run(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 func Run(ctx context.Context, args []string, in io.Reader, out, errOut io.Writer) int {
-	e := env{ctx: ctx, in: in, out: out, err: errOut, now: time.Now}
+	return execute(env{ctx: ctx, in: in, out: out, err: errOut, now: time.Now, getenv: os.Getenv}, args)
+}
+
+// execute is Run with the environment spelled out, so tests can control it.
+func execute(e env, args []string) int {
+	out, errOut := e.out, e.err
 	name := "play"
 	rest := args
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {

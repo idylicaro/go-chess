@@ -4,21 +4,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/idylicaro/go-chess/internal/render"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
-
-// style says how the board is drawn.
-type style struct {
-	color   bool // ANSI colors
-	unicode bool // chess symbols instead of letters
-}
 
 // session is a game in progress on the terminal.
 type session struct {
 	env
 	game        *chess.Game
 	flipped     bool // show the board from Black's side
-	style       style
+	style       render.Style
 	timeControl *chess.TimeConfig // nil on an untimed game
 
 	pgnOut string // where to write the PGN when the session ends; empty for nowhere
@@ -28,8 +23,7 @@ type session struct {
 }
 
 func (s *session) show() {
-	displayGameState(s.out, s.game)
-	displayBoard(s.out, s.game.GetBoard(), nil, s.flipped)
+	printPosition(s.out, s.game, s.style, s.flipped)
 }
 
 // play makes a move for the side to move.

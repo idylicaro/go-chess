@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/idylicaro/go-chess/internal/pgnread"
 	"github.com/idylicaro/go-chess/pkg/chess"
@@ -62,8 +63,18 @@ func fakeEngine() {
 // run executes the command line and returns the exit status and both outputs.
 func run(t *testing.T, stdin string, args ...string) (code int, stdout, stderr string) {
 	t.Helper()
+	return runEnv(t, nil, stdin, args...)
+}
+
+// runEnv is run with environment variables; those not given are unset, so a
+// test does not depend on the locale of the machine it runs on.
+func runEnv(t *testing.T, vars map[string]string, stdin string, args ...string) (code int, stdout, stderr string) {
+	t.Helper()
 	var out, errOut bytes.Buffer
-	code = Run(context.Background(), args, strings.NewReader(stdin), &out, &errOut)
+	code = execute(env{
+		ctx: context.Background(), in: strings.NewReader(stdin), out: &out, err: &errOut,
+		now: time.Now, getenv: func(name string) string { return vars[name] },
+	}, args)
 	return code, out.String(), errOut.String()
 }
 
@@ -306,10 +317,10 @@ func TestPlayUndoFENAndMoves(t *testing.T) {
 
 func TestPlayFlipTurnsTheBoardAround(t *testing.T) {
 	out := play(t, "flip", "exit")
-	if !strings.Contains(out, "h g f e d c b a") {
+	if !strings.Contains(out, "h  g  f  e  d  c  b  a") {
 		t.Errorf("board not flipped:\n%s", out)
 	}
-	if out := play(t, "flip", "flip", "exit"); strings.Count(out, "h g f e d c b a") != 1 {
+	if out := play(t, "flip", "flip", "exit"); strings.Count(out, "h  g  f  e  d  c  b  a") != 1 {
 		t.Errorf("flip twice should show the flipped board once, then restore it:\n%s", out)
 	}
 }
@@ -416,7 +427,7 @@ func TestPlayAgainstEngineAsBlack(t *testing.T) {
 	if strings.Index(out, "Engine plays") > strings.Index(out, "Enter a move") {
 		t.Errorf("the engine, as White, must move before the first prompt:\n%s", out)
 	}
-	if !strings.Contains(out, "h g f e d c b a") {
+	if !strings.Contains(out, "h  g  f  e  d  c  b  a") {
 		t.Errorf("board should face Black:\n%s", out)
 	}
 	if !strings.Contains(out, "the engine has made the only move so far") {
@@ -500,5 +511,38 @@ func TestPGNOutUnwritable(t *testing.T) {
 	code, _, errOut := run(t, "exit\n", "play", "--pgn-out", bad)
 	if code != 1 || !strings.Contains(errOut, "writing PGN") {
 		t.Errorf("exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestBoardStyleFollowsTheTerminalAndFlags(t *testing.T) {
+	utf8 := map[string]string{"LANG": "en_US.UTF-8"}
+	_, out, _ := runEnv(t, utf8, "", "fen")
+	if !strings.Contains(out, "♜") || strings.Contains(out, "\x1b[") {
+		t.Errorf("UTF-8 locale without a terminal: want Unicode, no color:\n%q", out)
+	}
+	_, out, _ = runEnv(t, utf8, "", "fen", "--ascii")
+	if strings.Contains(out, "♜") || !strings.Contains(out, " r ") {
+		t.Errorf("--ascii:\n%s", out)
+	}
+	_, out, _ = runEnv(t, nil, "", "fen")
+	if strings.Contains(out, "♜") {
+		t.Errorf("no locale should fall back to ASCII:\n%s", out)
+	}
+	forced := map[string]string{"LANG": "en_US.UTF-8", "CLICOLOR_FORCE": "1"}
+	_, out, _ = runEnv(t, forced, "", "fen")
+	if !strings.Contains(out, "\x1b[48;5;") {
+		t.Errorf("CLICOLOR_FORCE should color the board:\n%q", out)
+	}
+	_, out, _ = runEnv(t, forced, "", "fen", "--no-color")
+	if strings.Contains(out, "\x1b[") || !strings.Contains(out, "♖") {
+		t.Errorf("--no-color should drop the colors and keep Unicode (outline pieces for White):\n%q", out)
+	}
+	_, out, _ = runEnv(t, forced, "e4\nexit\n", "play", "--no-color", "--ascii")
+	if strings.Contains(out, "\x1b[") || strings.Contains(out, "♜") {
+		t.Errorf("play --no-color --ascii:\n%q", out)
+	}
+	_, out, _ = runEnv(t, map[string]string{"NO_COLOR": "1", "CLICOLOR_FORCE": "1"}, "", "fen")
+	if strings.Contains(out, "\x1b[") {
+		t.Errorf("NO_COLOR must win:\n%q", out)
 	}
 }

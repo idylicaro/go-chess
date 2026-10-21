@@ -21,8 +21,7 @@ type playOptions struct {
 	level      int
 	color      string
 	pgnOut     string
-	noColor    bool
-	ascii      bool
+	style      *styleFlags
 }
 
 func runPlay(e env, args []string) error {
@@ -34,8 +33,7 @@ func runPlay(e env, args []string) error {
 	fs.IntVar(&opts.level, "level", -1, "engine strength from 0 to 20 (needs --engine)")
 	fs.StringVar(&opts.color, "color", "white", "your side against the engine: white or black (needs --engine)")
 	fs.StringVar(&opts.pgnOut, "pgn-out", "", "write the game as PGN to this file when it ends, or to standard output with -")
-	fs.BoolVar(&opts.noColor, "no-color", false, "print the board without colors")
-	fs.BoolVar(&opts.ascii, "ascii", false, "draw pieces with letters instead of Unicode symbols")
+	opts.style = addStyleFlags(fs)
 	rest, err := parseFlags(fs, args)
 	if err != nil {
 		return err
@@ -69,7 +67,7 @@ func newSession(e env, opts playOptions) (*session, error) {
 		return nil, usagef("invalid --color %q: expected white or black", opts.color)
 	}
 
-	s := &session{env: e, style: style{color: !opts.noColor, unicode: !opts.ascii}}
+	s := &session{env: e, style: e.style(opts.style)}
 	var err error
 	if opts.timeText != "" {
 		config, err := parseTimeControl(opts.timeText)
