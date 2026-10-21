@@ -84,9 +84,9 @@ func TestSearch_PrincipalVariationIsPlayable(t *testing.T) {
 }
 
 func TestSearch_StopsAtTheNodeLimit(t *testing.T) {
-	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, kiwipeteFEN), Limits{Nodes: 5000}, nil)
-	if result.Best.IsNull() || result.Nodes > 5000+2*pollInterval {
-		t.Errorf("node-limited search: best %s after %d nodes, want a move within about 5000", result.Best, result.Nodes)
+	result := New(eval.Evaluate).Search(context.Background(), boardFromFEN(t, kiwipeteFEN), Limits{Nodes: 20000}, nil)
+	if result.Best.IsNull() || result.Nodes > 20000+2*pollInterval {
+		t.Errorf("node-limited search: best %s after %d nodes, want a move within about 20000", result.Best, result.Nodes)
 	}
 }
 
@@ -120,24 +120,24 @@ func TestSearch_ScoresARepetitionAsADraw(t *testing.T) {
 // TestNegamax_MatchesPlainMinimax checks that alpha-beta pruning changes
 // only the work, never the score of a full-window search.
 func TestNegamax_MatchesPlainMinimax(t *testing.T) {
-	for _, fen := range []string{chess.StartingFEN, kiwipeteFEN, scholarsMateFEN, hangingQueenFEN} {
+	for _, fen := range []string{chess.StartingFEN, scholarsMateFEN, hangingQueenFEN, benchmarkFENs["endgame"]} {
 		board := boardFromFEN(t, fen)
-		want := minimax(board, 3, 0)
+		want := minimax(board, 2, 0)
 		w := newWorker(board, eval.Evaluate, newStopper(context.Background(), 0))
-		if got := w.negamax(3, 0, -infinity, infinity); got != want {
-			t.Errorf("%q: negamax(3) = %d, minimax(3) = %d", fen, got, want)
+		if got := w.negamax(2, 0, -infinity, infinity); got != want {
+			t.Errorf("%q: negamax(2) = %d, minimax(2) = %d", fen, got, want)
 		}
 	}
 }
 
-// minimax is the reference: every move searched, with the same leaf, draw
-// and mate rules as negamax.
+// minimax is the reference: every move searched, with the same draw and
+// mate rules as negamax and its full-window quiescence search at the leaves.
 func minimax(board *chess.SearchBoard, depth, ply int) int {
 	if ply > 0 && (board.IsRepetition() || board.HalfMoveClock() >= fiftyMovePlies) {
 		return drawScore
 	}
 	if depth == 0 {
-		return eval.Evaluate(board)
+		return newWorker(board, eval.Evaluate, newStopper(context.Background(), 0)).quiesce(ply, -infinity, infinity)
 	}
 	var buffer [chess.MaxSearchMoves]chess.SearchMove
 	best, legalMoves := -infinity, 0

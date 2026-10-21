@@ -53,8 +53,11 @@ func (w *worker) negamax(depth, ply, alpha, beta int) int {
 	if ply > 0 && w.isDraw() {
 		return drawScore
 	}
-	if depth <= 0 || ply >= maxPly {
+	if ply >= maxPly {
 		return w.evaluate(w.board)
+	}
+	if depth <= 0 {
+		return w.quiesce(ply, alpha, beta)
 	}
 	return w.searchMoves(depth, ply, alpha, beta)
 }
