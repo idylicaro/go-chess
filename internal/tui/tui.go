@@ -29,6 +29,16 @@ type Config struct {
 	// Clock is the time source of a timed game; nil means the wall clock.
 	// Tests pass a fake one.
 	Clock chess.Clock
+	// Engine, if set, plays the side opposite HumanColor. It is already
+	// started and configured; the caller closes it after Run returns.
+	Engine Engine
+	// EngineName is shown beside the board.
+	EngineName string
+	// HumanColor is the player's side against an Engine. The board faces it.
+	HumanColor chess.Color
+	// Context bounds engine searches. Run sets it to its own context when it
+	// is nil.
+	Context context.Context
 	// TickInterval is how often the clocks are redrawn and checked for a
 	// flag; zero means 200ms.
 	TickInterval time.Duration
@@ -39,6 +49,9 @@ type Config struct {
 //
 //	err := tui.Run(ctx, tui.Config{Style: style}, os.Stdin, os.Stdout)
 func Run(ctx context.Context, cfg Config, in io.Reader, out io.Writer) error {
+	if cfg.Context == nil {
+		cfg.Context = ctx
+	}
 	model, err := New(cfg)
 	if err != nil {
 		return err

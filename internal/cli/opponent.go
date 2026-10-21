@@ -28,19 +28,29 @@ func (o *opponent) side() chess.Color {
 	return chess.White
 }
 
-func (s *session) startEngine(path string, level int, human chess.Color) error {
+// openEngine starts the UCI engine at path and sets its strength; a negative
+// level leaves it at the engine's default.
+func openEngine(path string, level int) (*engine.Engine, error) {
 	eng, err := engine.Start(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if level >= 0 {
 		if err := eng.SetOption("Skill Level", fmt.Sprint(level)); err != nil {
 			eng.Close()
-			return err
+			return nil, err
 		}
 	}
 	if err := eng.NewGame(); err != nil {
 		eng.Close()
+		return nil, err
+	}
+	return eng, nil
+}
+
+func (s *session) startEngine(path string, level int, human chess.Color) error {
+	eng, err := openEngine(path, level)
+	if err != nil {
 		return err
 	}
 	s.opponent = &opponent{engine: eng, human: human}

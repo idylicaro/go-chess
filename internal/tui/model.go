@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -53,6 +54,14 @@ type Model struct {
 	clockStarted bool
 	tickGen      int
 
+	// Playing against an engine: a search runs in a command while thinking;
+	// searchGen tells its answer from that of an abandoned search.
+	thinking     bool
+	engineDown   bool // the engine failed; no more searches until the player takes a move back
+	frame        int
+	searchGen    int
+	cancelSearch context.CancelFunc
+
 	// Terminal size, known after the first WindowSizeMsg.
 	width, height int
 }
@@ -80,15 +89,29 @@ func New(cfg Config) (Model, error) {
 	if cfg.TickInterval <= 0 {
 		cfg.TickInterval = defaultTickInterval
 	}
-	return Model{cfg: cfg, game: game, cursor: chess.Position{X: 4, Y: 6}}, nil // e2
+	m := Model{cfg: cfg, game: game, cursor: chess.Position{X: 4, Y: 6}} // e2
+	if cfg.Engine != nil && cfg.HumanColor == chess.Black {
+		m.flipped, m.cursor = true, chess.Position{X: 4, Y: 1} // e7
+	}
+	return m, nil
 }
 
 // Init has nothing to start.
 func (m Model) Init() tea.Cmd { return nil }
 
-// Update handles a message: a key, the mouse, a resize or, later, a tick or
-// an engine reply.
+// Update handles a message (a key, the mouse, a resize, a tick or an engine
+// reply) and, if that leaves the engine to move, starts its search.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	model := next.(Model)
+	if model.screen != screenGame || model.promoting != nil {
+		return model, cmd
+	}
+	model, search := model.startSearch()
+	return model, tea.Batch(cmd, search)
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -98,6 +121,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateMouse(msg)
 	case tickMsg:
 		return m.updateTick(msg)
+	case engineMoveMsg:
+		return m.updateEngineMove(msg)
+	case spinMsg:
+		return m.updateSpin(msg)
 	}
 	return m, nil
 }
@@ -115,7 +142,7 @@ func (m Model) updateTick(msg tickMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if m.game.CheckTimeout() {
-		m = m.deselect()
+		m = m.stopSearch().deselect()
 		m.promoting = nil
 		m.message = render.Status(m.game)
 		return m, nil
@@ -141,6 +168,7 @@ func (m Model) enterGame() (Model, tea.Cmd) {
 
 // leaveGame goes back to the menu and stops the clock.
 func (m Model) leaveGame() Model {
+	m = m.stopSearch() // it starts again when the player comes back
 	m.screen = screenMenu
 	if m.game.HasTimer() && !m.game.IsOver() {
 		_ = m.game.PauseTimer()
@@ -154,6 +182,7 @@ func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	key := msg.String()
 	if key == "ctrl+c" || key == "q" {
+		m.stopSearch()
 		return m, tea.Quit
 	}
 	if m.screen == screenMenu {
@@ -165,32 +194,32 @@ func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	return m.updateGameKey(key), nil
+	return m.updateGameKey(key)
 }
 
-func (m Model) updateGameKey(key string) Model {
+func (m Model) updateGameKey(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "left", "h":
-		return m.moveCursor(-1, 0)
+		return m.moveCursor(-1, 0), nil
 	case "right", "l":
-		return m.moveCursor(1, 0)
+		return m.moveCursor(1, 0), nil
 	case "up", "k":
-		return m.moveCursor(0, -1)
+		return m.moveCursor(0, -1), nil
 	case "down", "j":
-		return m.moveCursor(0, 1)
+		return m.moveCursor(0, 1), nil
 	case "enter", " ":
-		return m.activate(m.cursor)
+		return m.activate(m.cursor), nil
 	case "esc":
 		if m.selected != nil {
-			return m.deselect()
+			return m.deselect(), nil
 		}
-		return m.leaveGame()
+		return m.leaveGame(), nil
 	case "f":
 		m.flipped = !m.flipped
 	case "u":
-		return m.undo()
+		return m.undo(), nil
 	}
-	return m
+	return m, nil
 }
 
 // moveCursor moves the cursor one square on the screen, whichever way the
@@ -222,6 +251,10 @@ func (m Model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 func (m Model) activate(square chess.Position) Model {
 	m.message = ""
 	if m.game.IsOver() {
+		return m
+	}
+	if m.thinking {
+		m.message = "Wait for the engine's move."
 		return m
 	}
 	if m.selected != nil {
@@ -304,13 +337,29 @@ func (m Model) play(move chess.Move) Model {
 	return m
 }
 
+// undo takes the last move back. Against an engine it takes back the
+// engine's reply along with the move it answered, so it is the player's turn
+// again; if it is still the engine's turn, because it is thinking or has
+// failed, only the player's move goes.
 func (m Model) undo() Model {
 	m = m.deselect()
-	if err := m.game.Undo(); err != nil {
+	plies := 1
+	if m.cfg.Engine != nil && m.game.GetCurrentTurn() == m.cfg.HumanColor {
+		plies = 2
+	}
+	if len(m.history) < plies {
 		m.message = "Nothing to take back."
 		return m
 	}
-	m.history = m.history[:len(m.history)-1]
+	m = m.stopSearch()
+	m.engineDown = false
+	for range plies {
+		if err := m.game.Undo(); err != nil {
+			m.message = "Nothing to take back."
+			return m
+		}
+		m.history = m.history[:len(m.history)-1]
+	}
 	m.message = ""
 	return m
 }

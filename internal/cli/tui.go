@@ -11,6 +11,9 @@ import (
 func runTUI(e env, args []string) error {
 	fs := newFlagSet(e, "tui", "[flags]", "Play in a full-screen terminal interface. Press q to quit.")
 	fen := fs.String("fen", chess.StartingFEN, "position to start from")
+	enginePath := fs.String("engine", "", "UCI engine to play against, like stockfish (default: two players at one keyboard)")
+	level := fs.Int("level", -1, "engine strength from 0 to 20 (needs --engine)")
+	color := fs.String("color", "white", "your side against the engine: white or black (needs --engine)")
 	timeText := fs.String("time", "", "time control as minutes+increment seconds, like 5+3 (default: untimed)")
 	styleOpts := addStyleFlags(fs)
 	rest, err := parseFlags(fs, args)
@@ -19,6 +22,15 @@ func runTUI(e env, args []string) error {
 	}
 	if len(rest) > 0 {
 		return usagef("unexpected argument %q", rest[0])
+	}
+	if *enginePath == "" && (*level >= 0 || *color != "white") {
+		return usagef("--level and --color only apply when playing against an engine; add --engine")
+	}
+	if *level > maxSkillLevel {
+		return usagef("invalid --level %d: expected 0 to %d", *level, maxSkillLevel)
+	}
+	if *color != "white" && *color != "black" {
+		return usagef("invalid --color %q: expected white or black", *color)
 	}
 	cfg := tui.Config{FEN: *fen, Style: e.style(styleOpts)}
 	if *timeText != "" {
@@ -33,6 +45,17 @@ func runTUI(e env, args []string) error {
 	}
 	if !render.IsTerminal(e.out) {
 		return errors.New("the TUI needs a terminal; use \"chess play\" for plain output")
+	}
+	if *enginePath != "" {
+		eng, err := openEngine(*enginePath, *level)
+		if err != nil {
+			return err
+		}
+		defer eng.Close()
+		cfg.Engine, cfg.EngineName = eng, eng.Name
+		if *color == "black" {
+			cfg.HumanColor = chess.Black
+		}
 	}
 	return tui.Run(e.ctx, cfg, e.in, e.out)
 }

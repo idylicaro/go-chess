@@ -87,6 +87,8 @@ func (m Model) footer() string {
 	switch {
 	case m.promoting != nil:
 		return m.promotionDialog()
+	case m.thinking:
+		return helpStyle.Render(m.thinkingLine())
 	case m.message != "":
 		return messageStyle.Render(m.message)
 	}

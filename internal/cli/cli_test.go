@@ -624,6 +624,13 @@ func TestTUIRequiresATerminal(t *testing.T) {
 	if code, _, _ := run(t, "", "tui", "--time", "soon"); code != 2 {
 		t.Errorf("bad time control: exit %d", code)
 	}
+	for _, args := range [][]string{
+		{"tui", "--level", "5"}, {"tui", "--color", "black"}, {"tui", "--engine", "x", "--level", "99"}, {"tui", "--engine", "x", "--color", "red"},
+	} {
+		if code, _, _ := run(t, "", args...); code != 2 {
+			t.Errorf("%v: exit %d, want 2", args, code)
+		}
+	}
 	if code, _, _ := run(t, "", "tui", "extra"); code != 2 {
 		t.Errorf("extra argument: exit %d", code)
 	}
