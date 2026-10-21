@@ -1,0 +1,18 @@
+                                                             
+  ♞ go-chess                                                 
+                                                             
+                                                             
+  8  .  .  .  . |*| .  .  k  8                               
+  7  .  .  .  . {P} .  .  .  7                               
+  6  .  .  .  .  .  .  .  .  6                               
+  5  .  .  .  .  .  .  .  .  5                               
+  4  .  .  .  .  .  .  .  .  4                               
+  3  .  .  .  .  .  .  .  .  3                               
+  2  .  .  .  .  .  .  .  .  2                               
+  1  .  .  .  .  K  .  .  .  1                               
+     a  b  c  d  e  f  g  h      ──────────────────────────  
+    +1                           White to move               
+                                                             
+  Promote to: [Q] Queen  [R] Rook  [B] Bishop  [N] Knight    
+  press a letter, or ←/→ and enter · esc cancels             
+                                                             

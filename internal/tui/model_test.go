@@ -361,7 +361,7 @@ func TestGameOverStopsMoves(t *testing.T) {
 	}
 }
 
-func TestMateEndsTheGameWithAMessage(t *testing.T) {
+func TestMateEndsTheGameAndSaysSo(t *testing.T) {
 	m, err := New(Config{FEN: "6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1"})
 	if err != nil {
 		t.Fatal(err)
@@ -369,7 +369,7 @@ func TestMateEndsTheGameWithAMessage(t *testing.T) {
 	next, _ := press(m, "enter")
 	// Cursor e2 → a1 (left 4, down 1): pick the rook up and mate on a8.
 	next, _ = press(next, "h", "h", "h", "h", "j", "enter", "k", "k", "k", "k", "k", "k", "k", "enter")
-	if !at(next).game.IsOver() || !strings.Contains(at(next).message, "Checkmate, White wins") {
-		t.Errorf("message %q, FEN %s", at(next).message, at(next).game.FEN())
+	if !at(next).game.IsOver() || !strings.Contains(next.View(), "Checkmate, White wins") {
+		t.Errorf("FEN %s:\n%s", at(next).game.FEN(), next.View())
 	}
 }

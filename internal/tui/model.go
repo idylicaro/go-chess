@@ -341,9 +341,6 @@ func (m Model) play(move chess.Move) Model {
 		return m
 	}
 	m.history = append(m.history, played{move, san})
-	if m.game.IsOver() {
-		m.message = render.Status(m.game)
-	}
 	return m
 }
 

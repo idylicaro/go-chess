@@ -1,0 +1,17 @@
+                                                                             
+  ♞ go-chess                                                                 
+                                                                             
+                                                                             
+  8  r  n  b  q  k  b  n  r  8     1. e4        e5                           
+  7  p  p  p  p  .  p  p  p  7     2. Nf3                                    
+  6  .  .  .  .  .  .  .  .  6                                               
+  5  .  .  .  .  p  .  .  .  5                                               
+  4  .  .  .  .  P  .  .  .  4                                               
+  3  .  .  .  .  . |N| .  .  3                                               
+  2  P  P  P  P  .  P  P  P  2                                               
+  1  R  N  B  Q  K  B [.] R  1                                               
+     a  b  c  d  e  f  g  h      ──────────────────────────                  
+                                 Black to move                               
+                                                                             
+  arrows move · enter or click select · u undo · f flip · esc menu · q quit  
+                                                                             

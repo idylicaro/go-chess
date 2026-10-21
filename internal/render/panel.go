@@ -62,7 +62,8 @@ type Panel struct {
 	Status          string
 	// Analysis, if set, adds the engine's evaluation and main line.
 	Analysis *Analysis
-	// Rows is how many lines of moves fit; older moves scroll off. Zero means 8.
+	// Rows is how many lines of moves fit; older moves scroll off. Zero fits
+	// the panel to the height of a board with its material lines.
 	Rows int
 }
 
@@ -78,9 +79,29 @@ type Analysis struct {
 }
 
 const (
-	panelWidth  = 26
-	defaultRows = 8
+	panelWidth = 26
+	// boardLines is what the panel can use beside a board: its eight ranks
+	// and the line of file labels, plus the material line below, less the one
+	// above, where the panel starts a line lower.
+	boardLines = 10
+	minRows    = 3
 )
+
+// rows is how many lines of moves fit beside the board once the clocks, the
+// analysis and the status bar have their share.
+func (p Panel) rows() int {
+	if p.Rows > 0 {
+		return p.Rows
+	}
+	used := 2 // the rule above the status bar, and the status bar
+	if p.Clocks != nil {
+		used += 3
+	}
+	if p.Analysis != nil {
+		used += 1 + len(p.Analysis.lines())
+	}
+	return max(boardLines-used, minRows)
+}
 
 // String draws the panel, one line per row, ending in a newline.
 func (p Panel) String() string {
@@ -139,10 +160,7 @@ func (p Panel) moveLines() []string {
 			number++
 		}
 	}
-	limit := p.Rows
-	if limit <= 0 {
-		limit = defaultRows
-	}
+	limit := p.rows()
 	if len(rows) > limit {
 		rows = rows[len(rows)-limit:]
 	}
@@ -162,6 +180,16 @@ var ansiSequence = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 // without color sequences.
 func width(s string) int {
 	return utf8.RuneCountInString(ansiSequence.ReplaceAllString(s, ""))
+}
+
+// Beside puts the panel next to a board drawn with opts, starting at the
+// first rank. A board with material lines has one above its first rank, so
+// the panel starts one line lower.
+func Beside(board string, opts Options, panel string, gap int) string {
+	if opts.Material || opts.Captured {
+		panel = "\n" + panel
+	}
+	return SideBySide(board, panel, gap)
 }
 
 // SideBySide puts right next to left, gap columns apart. Both may carry

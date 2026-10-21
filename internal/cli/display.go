@@ -53,7 +53,7 @@ func (e env) printPosition(game *chess.Game, opts render.Options, panel render.P
 	board := render.Board(game.GetBoard(), opts)
 	text := board + panel.String()
 	if columns, err := strconv.Atoi(e.getenv("COLUMNS")); err != nil || columns == 0 || columns >= minSideBySide {
-		text = render.SideBySide(board, panel.String(), 3)
+		text = render.Beside(board, opts, panel.String(), 3)
 	}
 	fmt.Fprintln(e.out)
 	fmt.Fprint(e.out, text)

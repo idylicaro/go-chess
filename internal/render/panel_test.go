@@ -86,3 +86,20 @@ func TestSideBySide(t *testing.T) {
 		t.Errorf("short right side: %q", got)
 	}
 }
+
+func TestBesideAlignsThePanelWithTheFirstRank(t *testing.T) {
+	game := chess.NewGame()
+	panel := Panel{Status: "S", FirstMoveNumber: 1}.String()
+	plain := Options{}
+	withMaterial := Options{Material: true}
+
+	first := func(out string) string { return strings.Split(out, "\n")[0] }
+	if got := first(Beside(Board(game.GetBoard(), plain), plain, panel, 3)); !strings.HasPrefix(got, "8 ") {
+		t.Errorf("without material lines the first line is rank 8: %q", got)
+	}
+	out := Beside(Board(game.GetBoard(), withMaterial), withMaterial, "A\nB\n", 3)
+	lines := strings.Split(out, "\n")
+	if lines[0] != "" || !strings.HasPrefix(lines[1], "8 ") || !strings.HasSuffix(lines[1], "A") {
+		t.Errorf("the panel should start level with rank 8, below the material line:\n%s", out)
+	}
+}

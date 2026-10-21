@@ -78,7 +78,7 @@ func (m Model) gameView() string {
 		black, _ := m.game.GetRemainingTime(chess.Black)
 		panel.Clocks = &render.Clocks{White: white, Black: black, Active: m.game.GetCurrentTurn(), Stopped: m.game.IsOver()}
 	}
-	position := strings.TrimRight(render.SideBySide(render.Board(m.game.GetBoard(), opts), panel.String(), 3), "\n")
+	position := strings.TrimRight(render.Beside(render.Board(m.game.GetBoard(), opts), opts, panel.String(), 3), "\n")
 	return lipgloss.JoinVertical(lipgloss.Left, m.title(), "", position, "", m.footer())
 }
 

@@ -1,0 +1,17 @@
+                                                                             
+  ♞ go-chess  analysis · Stockfish 17                                        
+                                                                             
+                                                                             
+  8  r  n  b  q  k  b  n  r  8                                               
+  7  p  p  p  p  p  p  p  p  7                                               
+  6  .  .  .  .  .  .  .  .  6                                               
+  5  .  .  .  .  .  .  .  .  5   ──────────────────────────                  
+  4  .  .  .  .  .  .  .  .  4   Eval +0.34   depth 22                       
+  3  .  .  .  .  .  .  .  .  3   ██████████████░░░░░░░░░░░░                  
+  2  P  P  P  P |P| P  P  P  2   1. e4 e5 2. Nf3 Nc6 3. Bb5                  
+  1  R  N  B  Q  K  B  N  R  1   a6 4. Ba4 Nf6 5. O-O Be7                    
+     a  b  c  d  e  f  g  h      ──────────────────────────                  
+                                 White to move                               
+                                                                             
+  arrows move · enter or click select · u undo · f flip · esc menu · q quit  
+                                                                             
