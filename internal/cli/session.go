@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/idylicaro/go-chess/internal/render"
 	"github.com/idylicaro/go-chess/pkg/chess"
@@ -19,19 +20,54 @@ type session struct {
 	pgnOut string // where to write the PGN when the session ends; empty for nowhere
 
 	opponent *opponent // nil when two players share the keyboard
-	plies    int       // moves played in this session, to undo a pair against the engine
+	history  []played  // moves played in this session, oldest first
+}
+
+// played is a move made in the session and how it reads in SAN.
+type played struct {
+	move chess.Move
+	san  string
 }
 
 func (s *session) show() {
-	printPosition(s.out, s.game, s.style, s.flipped)
+	s.showWith(render.Options{})
+}
+
+// showWith prints the position with extra highlights, such as a selection.
+func (s *session) showWith(opts render.Options) {
+	opts.Style, opts.Flipped = s.style, s.flipped
+	var last *chess.Move
+	if n := len(s.history); n > 0 {
+		last = &s.history[n-1].move
+	}
+	printPosition(s.out, s.game, opts, last)
 }
 
 // play makes a move for the side to move.
 func (s *session) play(move chess.Move) error {
+	san, err := s.game.SAN(move)
+	if err != nil {
+		return err
+	}
 	if err := s.game.Move(move); err != nil {
 		return err
 	}
-	s.plies++
+	s.history = append(s.history, played{move, san})
+	return nil
+}
+
+// selectSquare shows the legal moves of the piece on the named square.
+func (s *session) selectSquare(from chess.Position) error {
+	name := render.SquareName(from)
+	piece, err := s.game.GetBoard().GetPiece(from.X, from.Y)
+	if err != nil || piece == nil {
+		return fmt.Errorf("there is no piece on %s", name)
+	}
+	targets := render.Targets(s.game, from)
+	if len(targets) == 0 {
+		return fmt.Errorf("the %s on %s has no legal move", strings.ToLower(piece.GetType().String()), name)
+	}
+	s.showWith(render.Options{Selected: &from, Targets: targets})
 	return nil
 }
 
@@ -43,7 +79,7 @@ func (s *session) close() {
 
 // gameCommands lists the in-game commands for "help", in display order.
 var gameCommands = []struct{ name, help string }{
-	{"moves", "list the legal moves"},
+	{"moves", "list the legal moves; \"moves e2\" shows where the piece on e2 can go"},
 	{"undo", "take back the last move (yours and the engine's reply, against an engine)"},
 	{"resign", "resign the game"},
 	{"draw", "offer a draw"},
@@ -98,7 +134,18 @@ func (s *session) command(input string) bool {
 		}
 		fmt.Fprintln(s.out, "Anything else is read as a move, in SAN (Nf3, exd5, O-O, e8=Q) or UCI (e2e4, e7e8q).")
 	default:
-		return false
+		// "moves e2" shows where the piece on e2 can go. A bare "e2" cannot
+		// mean that: it is the SAN of a pawn move.
+		rest, ok := strings.CutPrefix(input, "moves ")
+		if !ok {
+			return false
+		}
+		from, isSquare := render.ParseSquare(rest)
+		if !isSquare {
+			err = fmt.Errorf("%q is not a square: write one like e2", strings.TrimSpace(rest))
+			break
+		}
+		err = s.selectSquare(from)
 	}
 	if err != nil {
 		fmt.Fprintf(s.out, "Error: %v\n", err)
@@ -126,22 +173,27 @@ func (s *session) answerer() chess.Color {
 
 func (s *session) undo() error {
 	if s.opponent == nil {
-		if err := s.game.Undo(); err != nil {
-			return err
-		}
-		s.plies--
-		return nil
+		return s.takeBack()
 	}
 	// Take back the engine's reply along with the move it answered, so it is
 	// the player's turn again; the engine would just replay otherwise.
-	if s.plies < 2 {
+	if len(s.history) < 2 {
 		return fmt.Errorf("%w yet: the engine has made the only move so far", chess.ErrNoMoveToUndo)
 	}
 	for range 2 {
-		if err := s.game.Undo(); err != nil {
+		if err := s.takeBack(); err != nil {
 			return err
 		}
-		s.plies--
+	}
+	return nil
+}
+
+func (s *session) takeBack() error {
+	if err := s.game.Undo(); err != nil {
+		return err
+	}
+	if n := len(s.history); n > 0 {
+		s.history = s.history[:n-1]
 	}
 	return nil
 }

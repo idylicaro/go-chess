@@ -546,3 +546,38 @@ func TestBoardStyleFollowsTheTerminalAndFlags(t *testing.T) {
 		t.Errorf("NO_COLOR must win:\n%q", out)
 	}
 }
+
+func TestMovesSquareShowsTargets(t *testing.T) {
+	out := play(t, "moves g1", "moves e4", "moves a8", "moves z9", "e4", "exit")
+	if !strings.Contains(out, "{N}") || strings.Count(out, "*") != 2 {
+		t.Errorf("g1 selection (knight with two targets):\n%s", out)
+	}
+	if !strings.Contains(out, "there is no piece on e4") {
+		t.Errorf("empty square:\n%s", out)
+	}
+	if !strings.Contains(out, "the rook on a8 has no legal move") && !strings.Contains(out, "there is no piece") {
+		t.Errorf("blocked piece:\n%s", out)
+	}
+	if !strings.Contains(out, `"z9" is not a square`) {
+		t.Errorf("bad square:\n%s", out)
+	}
+}
+
+func TestLastMoveAndCheckAreHighlighted(t *testing.T) {
+	out := play(t, "e4", "e5", "Qh5", "Nc6", "Qxf7+", "exit")
+	if !strings.Contains(out, "[Q]") || !strings.Contains(out, "<k>") {
+		t.Errorf("no last-move or check highlight:\n%s", out)
+	}
+	// After undo the last move is the previous one: Nc6.
+	out = play(t, "e4", "e5", "Qh5", "Nc6", "Qxf7+", "undo", "exit")
+	if i := strings.LastIndex(out, "Current State"); strings.Contains(out[i:], "<k>") || !strings.Contains(out[i:], "[n]") {
+		t.Errorf("after undo:\n%s", out[i:])
+	}
+}
+
+func TestBareSquareIsAPawnMove(t *testing.T) {
+	out := play(t, "e4", "fen", "exit")
+	if !strings.Contains(out, "4P3") {
+		t.Errorf("e4 should move the pawn:\n%s", out)
+	}
+}

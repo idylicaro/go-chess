@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 
+	"github.com/idylicaro/go-chess/internal/render"
+
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
@@ -25,7 +27,7 @@ func runFEN(e env, args []string) error {
 		return err
 	}
 	fmt.Fprintf(e.out, "FEN:         %s\n", game.FEN())
-	printPosition(e.out, game, e.style(styleOpts), false)
+	printPosition(e.out, game, render.Options{Style: e.style(styleOpts)}, nil)
 	fmt.Fprintf(e.out, "Legal moves: %d\n", len(game.LegalMoves()))
 	return nil
 }

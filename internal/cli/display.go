@@ -35,10 +35,14 @@ func (e env) style(f *styleFlags) render.Style {
 	return style
 }
 
-// printPosition writes the state line and the board.
-func printPosition(w io.Writer, game *chess.Game, style render.Style, flipped bool) {
+// printPosition writes the state line and the board, with the last move and
+// a king in check highlighted. opts carries the style, the orientation and
+// any selection; last may be nil.
+func printPosition(w io.Writer, game *chess.Game, opts render.Options, last *chess.Move) {
+	opts.LastMove = last
+	opts.Check = render.CheckSquare(game)
 	fmt.Fprint(w, stateLine(game))
-	fmt.Fprint(w, render.Board(game.GetBoard(), render.Options{Style: style, Flipped: flipped}))
+	fmt.Fprint(w, render.Board(game.GetBoard(), opts))
 }
 
 // stateLine describes the state of the game and, on a timed game, the clocks.

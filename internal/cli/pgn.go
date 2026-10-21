@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/idylicaro/go-chess/internal/pgnread"
+	"github.com/idylicaro/go-chess/internal/render"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
@@ -32,7 +33,7 @@ func runPGN(e env, args []string) error {
 		return usagef("--game %d: the file has %d game(s)", *number, len(games))
 	}
 	parsed := games[*number-1]
-	game, _, err := parsed.Replay()
+	game, moves, err := parsed.Replay()
 	if err != nil {
 		return err
 	}
@@ -46,7 +47,11 @@ func runPGN(e env, args []string) error {
 	fmt.Fprintln(e.out)
 	fmt.Fprintln(e.out, numberedMoves(parsed.Moves, startFEN(parsed)))
 	fmt.Fprintln(e.out)
-	printPosition(e.out, game, e.style(styleOpts), false)
+	var last *chess.Move
+	if len(moves) > 0 {
+		last = &moves[len(moves)-1]
+	}
+	printPosition(e.out, game, render.Options{Style: e.style(styleOpts)}, last)
 	fmt.Fprintf(e.out, "FEN: %s\n", game.FEN())
 	if parsed.Result != "" {
 		fmt.Fprintf(e.out, "Result: %s\n", parsed.Result)

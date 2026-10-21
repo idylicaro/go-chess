@@ -94,3 +94,104 @@ func TestBoardWithoutColorHasNoEscapes(t *testing.T) {
 		}
 	}
 }
+
+func play(t *testing.T, game *chess.Game, sans ...string) chess.Move {
+	t.Helper()
+	var move chess.Move
+	for _, san := range sans {
+		var err error
+		if move, err = game.ParseSAN(san); err != nil {
+			t.Fatal(err)
+		}
+		if err := game.Move(move); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return move
+}
+
+func TestHighlightsLastMoveAndCheck(t *testing.T) {
+	game := chess.NewGame()
+	last := play(t, game, "e4", "e5", "Qh5", "Nc6", "Qxf7+")
+	for name, style := range styles {
+		t.Run(name, func(t *testing.T) {
+			golden(t, "highlight_check_"+name, Board(game.GetBoard(), Options{Style: style, LastMove: &last, Check: CheckSquare(game)}))
+		})
+	}
+}
+
+func TestHighlightsSelectionAndTargets(t *testing.T) {
+	game := mustGame(t, "rnbqkbnr/ppp1pppp/8/3p4/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3")
+	from, _ := ParseSquare("e4")
+	targets := Targets(game, from)
+	if len(targets) != 2 { // e5 and the capture on d5
+		t.Fatalf("targets = %v", targets)
+	}
+	for name, style := range styles {
+		t.Run(name, func(t *testing.T) {
+			golden(t, "highlight_select_"+name, Board(game.GetBoard(), Options{Style: style, Selected: &from, Targets: targets}))
+		})
+	}
+}
+
+func TestMarksDoNotChangeThePieces(t *testing.T) {
+	game := chess.NewGame()
+	last := play(t, game, "e4")
+	from, _ := ParseSquare("g8")
+	plain := Board(game.GetBoard(), Options{})
+	marked := Board(game.GetBoard(), Options{LastMove: &last, Selected: &from, Targets: Targets(game, from)})
+	if strings.Count(plain, "\n") != strings.Count(marked, "\n") {
+		t.Error("highlights changed the number of lines")
+	}
+}
+
+func TestCheckSquareOnlyWhileInCheck(t *testing.T) {
+	game := chess.NewGame()
+	if CheckSquare(game) != nil {
+		t.Error("check square at the start")
+	}
+	play(t, game, "f3", "e5", "g4", "Qh4#")
+	if sq := CheckSquare(game); sq == nil || SquareName(*sq) != "e1" {
+		t.Errorf("checkmated king square = %v", sq)
+	}
+}
+
+func TestTargets(t *testing.T) {
+	game := chess.NewGame()
+	names := func(from string) string {
+		p, _ := ParseSquare(from)
+		var out []string
+		for _, target := range Targets(game, p) {
+			out = append(out, SquareName(target))
+		}
+		return strings.Join(out, " ")
+	}
+	if got := names("g1"); got != "f3 h3" && got != "h3 f3" {
+		t.Errorf("g1 targets = %q", got)
+	}
+	if got := names("e4"); got != "" { // empty square
+		t.Errorf("empty square targets = %q", got)
+	}
+	if got := names("e7"); got != "" { // Black's piece on White's turn
+		t.Errorf("opponent's piece targets = %q", got)
+	}
+	promo := mustGame(t, "7k/4P3/8/8/8/8/8/4K3 w - - 0 1")
+	from, _ := ParseSquare("e7")
+	if got := Targets(promo, from); len(got) != 1 {
+		t.Errorf("promotion square counted %d times: %v", len(got), got)
+	}
+}
+
+func TestParseSquare(t *testing.T) {
+	for _, name := range []string{"a1", "h8", "E4", " e4 "} {
+		p, ok := ParseSquare(name)
+		if !ok || SquareName(p) != strings.ToLower(strings.TrimSpace(name)) {
+			t.Errorf("ParseSquare(%q) = %v, %v", name, p, ok)
+		}
+	}
+	for _, name := range []string{"", "e", "e9", "i1", "e44", "e0"} {
+		if _, ok := ParseSquare(name); ok {
+			t.Errorf("ParseSquare(%q) succeeded", name)
+		}
+	}
+}
