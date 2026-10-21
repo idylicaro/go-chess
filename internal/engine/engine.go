@@ -162,9 +162,26 @@ func (e *Engine) NewGame() error {
 //
 //	res, err := e.Search(ctx, game.FEN(), engine.Limits{MoveTime: time.Second}, nil)
 func (e *Engine) Search(ctx context.Context, fen string, limits Limits, onInfo func(Info)) (Result, error) {
+	return e.searchPosition(ctx, "position fen "+fen, limits, onInfo)
+}
+
+// SearchGame is Search for the position after moves (UCI notation) from
+// fen. Unlike a FEN of the current position, it lets the engine see the
+// repetitions of the game, which a tournament needs.
+//
+//	res, err := e.SearchGame(ctx, chess.StartingFEN, []string{"e2e4", "e7e5"}, limits, nil)
+func (e *Engine) SearchGame(ctx context.Context, fen string, moves []string, limits Limits, onInfo func(Info)) (Result, error) {
+	command := "position fen " + fen
+	if len(moves) > 0 {
+		command += " moves " + strings.Join(moves, " ")
+	}
+	return e.searchPosition(ctx, command, limits, onInfo)
+}
+
+func (e *Engine) searchPosition(ctx context.Context, positionCommand string, limits Limits, onInfo func(Info)) (Result, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if err := e.send("position fen " + fen); err != nil {
+	if err := e.send(positionCommand); err != nil {
 		return Result{}, err
 	}
 	if err := e.send(limits.command()); err != nil {

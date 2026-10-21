@@ -242,3 +242,23 @@ func TestSANAndLine(t *testing.T) {
 		t.Errorf("SAN from a bad FEN = %v", got)
 	}
 }
+
+func TestSearchGameSendsTheMoves(t *testing.T) {
+	e, f := newFake(t, basicEngine)
+	if _, err := e.SearchGame(context.Background(), "startfen", []string{"e2e4", "e7e5"}, Limits{Depth: 1}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.SearchGame(context.Background(), "otherfen", nil, Limits{Depth: 1}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var positions []string
+	for len(f.commands) > 0 {
+		if command := <-f.commands; strings.HasPrefix(command, "position") {
+			positions = append(positions, command)
+		}
+	}
+	want := []string{"position fen startfen moves e2e4 e7e5", "position fen otherfen"}
+	if strings.Join(positions, "|") != strings.Join(want, "|") {
+		t.Errorf("position commands = %q, want %q", positions, want)
+	}
+}

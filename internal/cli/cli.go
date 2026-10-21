@@ -44,6 +44,7 @@ var commands = []command{
 	{"perft", "count the leaf nodes of the move tree", runPerft},
 	{"fen", "check a FEN and show its position", runFEN},
 	{"pgn", "read a PGN file and show its games", runPGN},
+	{"match", "play two UCI engines against each other, with an SPRT", runMatch},
 }
 
 // Run executes the command line (without the program name) and returns the
