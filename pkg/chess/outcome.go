@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/common"
 )
 
 // IsOver reports whether the game has ended, by the board, the clock,

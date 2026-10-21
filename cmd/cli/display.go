@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/pkg/chess"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/pkg/chess"
 	"time"
 )
 

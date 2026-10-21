@@ -2,10 +2,10 @@ package chess
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/internal/debug"
-	"idylicaro/go-chess/internal/timer"
-	"idylicaro/go-chess/internal/uci"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/debug"
+	"github.com/idylicaro/go-chess/internal/timer"
+	"github.com/idylicaro/go-chess/internal/uci"
 	"time"
 )
 

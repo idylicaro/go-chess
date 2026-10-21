@@ -2,7 +2,7 @@ package chess
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/common"
 )
 
 // CoordinateConverter handles conversion between different coordinate systems

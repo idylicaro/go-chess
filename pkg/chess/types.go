@@ -2,9 +2,9 @@ package chess
 
 import (
 	"errors"
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/internal/timer"
-	"idylicaro/go-chess/internal/uci"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/timer"
+	"github.com/idylicaro/go-chess/internal/uci"
 )
 
 // Types of the supporting packages under internal/, re-exported so callers

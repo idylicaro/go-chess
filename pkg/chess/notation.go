@@ -2,8 +2,8 @@ package chess
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/internal/uci"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/uci"
 )
 
 // SAN formats a legal move of the side to move in Standard Algebraic

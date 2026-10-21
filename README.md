@@ -1,112 +1,102 @@
 # Go Chess
-A chess engine written in Go. Implements board representation, piece logic, and game state management. Communicates with Stockfish via the UCI protocol. Includes both a CLI interface and a backend server for multiplayer support.
 
-## Directory Overview
+[![CI](https://github.com/idylicaro/go-chess/actions/workflows/ci.yml/badge.svg)](https://github.com/idylicaro/go-chess/actions/workflows/ci.yml)
+
+A chess rules library for Go, with a small terminal client. It has no dependencies outside the standard library.
+
+- Full legal-move generation: castling, en passant, promotion, check, checkmate and stalemate.
+- Draw rules: fifty-move, threefold repetition, insufficient material, agreement, and timeout against insufficient material.
+- Resignation, draw offers and `Undo`.
+- FEN import/export, SAN parsing/formatting and PGN export.
+- A chess clock with an injectable time source.
+- Perft tests against the six reference positions.
+
+## Install
 
 ```bash
-├── cmd/
-│   ├── server/
-│   │    └── main.go
-│   └── cli/
-│       └── main.go
-├── pkg/
-│   └── chess/
-│       ├── board.go
-│       ├── piece.go
-│       ├── game.go
-│       └── outcome.go
-├── internal/
-│   ├── uci/
-│   │   └── protocol.go
-│   ├── common/
-│   │   └── piece.go
-│   ├── debug/
-│   │   ├── debug.go
-│   │   └── chess.go
-│   └── timer/
-│       └── timer.go
+go get github.com/idylicaro/go-chess
 ```
 
-- **cmd/**  
-   Contains the executables for the project. Each subdirectory is a separate program that can be built and run.
+The module path is `github.com/idylicaro/go-chess`; the importable package is `github.com/idylicaro/go-chess/pkg/chess`.
 
-  - **cmd/server/**  
-     Backend server responsible for managing matches, multiplayer features, and communication with the AI. The entry point is `main.go`.
+## Usage
 
-  - **cmd/cli/**  
-     Command-line interface for interacting with the chess engine.
+```go
+package main
 
-- **pkg/chess/**  
-   The public, importable API (`idylicaro/go-chess/pkg/chess`). It re-exports the types it needs from `internal/` (`Color`, `Move`, `TimeConfig`, ...), so callers never import `internal/`.
+import (
+	"fmt"
 
-  - `board.go`: Board representation.
-  - `piece.go`: Piece definitions and properties.
-  - `game.go`: Game state management (turns, check, etc.).
-  - `outcome.go`: `Result()`, `DrawReason()`, `LegalMoves()`, resignation and draw offers.
-  - `undo.go`: `Undo()`.
+	"github.com/idylicaro/go-chess/pkg/chess"
+)
 
-- **internal/**  
-   Supporting code, not meant to be imported by other projects.
+func main() {
+	game := chess.NewGame()
 
-  - **internal/common/**
-    Handles common utilities and types used across the project.
+	for _, notation := range []string{"f2f3", "e7e5", "g2g4", "d8h4"} {
+		move, err := chess.ParseMove(notation) // UCI notation
+		if err != nil {
+			panic(err)
+		}
+		if err := game.Move(move); err != nil {
+			panic(err)
+		}
+	}
 
-  - **internal/debug/**  
-    Provides debugging utilities and logging for the chess engine.
+	fmt.Println(game.Result())            // 0-1
+	fmt.Println(game.GetState())          // Checkmate
+	fmt.Println(len(game.LegalMoves()))   // 0
 
-  - **internal/timer/**  
-    Implements timing and time control features for the chess engine.
-
-  - **internal/uci/**  
-    Handles communication with Stockfish using the UCI protocol.
-
-    - `protocol.go`: Functions for sending commands and parsing responses.
-
-  - **scripts/**  
-    Contains utility scripts for development and testing.
-
-## UCI Command Processing
-
-The UCI format for a move is a string like "e2e4".
-
-```
-       a b c d e f g h
-    8 [ ][ ][ ][ ][ ][ ][ ][ ]
-    7 [ ][ ][ ][ ][ ][ ][ ][ ]
-    6 [ ][ ][ ][ ][ ][ ][ ][ ]
-    5 [ ][ ][ ][ ][ ][ ][ ][ ]
-    4 [ ][ ][ ][ ][ ][ ][ ][ ]
-    3 [ ][ ][ ][ ][ ][ ][ ][ ]
-    2 [ ][ ][ ][ ][ ][ ][ ][ ]
-    1 [ ][ ][ ][ ][ ][ ][ ][ ]
+	_ = game.Undo()                       // take the last move back
+	fmt.Println(game.Result())            // *
+}
 ```
 
----
+Other entry points:
 
-## Internal board Overview
+| Need | API |
+|---|---|
+| Start from a position | `chess.ParseFEN(fen)`, `game.FEN()` |
+| Moves in SAN | `game.SAN(move)`, `game.ParseSAN(san)` |
+| Export a game | `game.PGN(chess.PGNHeaders{...})` |
+| How the game ended | `game.Result()`, `game.DrawReason()`, `game.IsOver()` |
+| Resign / draw by agreement | `game.Resign(color)`, `game.OfferDraw(color)`, `game.AcceptDraw(color)`, `game.DeclineDraw(color)` |
+| Timed games | `chess.NewTimedGame(chess.Blitz3Plus2, chess.SystemClock{})` |
+| Move-generator check | `game.Perft(depth)`, `game.Divide(depth)` |
+
+Errors from a game that has already ended wrap `chess.ErrGameOver`; use `errors.Is`.
+
+## Command-line client
+
+```bash
+make run          # builds bin/chess and starts it
+```
+
+Moves are typed in UCI notation (`e2e4`, `e7e8q`). Other commands: `moves`, `undo`, `resign`, `draw`, `accept`, `decline`, `exit`.
+
+## Project layout
 
 ```
-       0 1 2 3 4 5 6 7
-    0 [ ][ ][ ][ ][ ][ ][ ][ ]
-    1 [ ][ ][ ][ ][ ][ ][ ][ ]
-    2 [ ][ ][ ][ ][ ][ ][ ][ ]
-    3 [ ][ ][ ][ ][ ][ ][ ][ ]
-    4 [ ][ ][ ][ ][ ][ ][ ][ ]
-    5 [ ][ ][ ][ ][ ][ ][ ][ ]
-    6 [ ][ ][ ][ ][ ][ ][ ][ ]
-    7 [ ][ ][ ][ ][ ][ ][ ][ ]
+cmd/cli/        terminal client
+pkg/chess/      public API: board, pieces, game, FEN, SAN, PGN, perft
+internal/       common types, clock, UCI move parsing, debug logging
+docs/           testing guide
+scripts/        benchmark script
 ```
 
----
+`pkg/chess` re-exports the few types it needs from `internal/` (`Color`, `Move`, `TimeConfig`, `Clock`), so callers never import `internal/`.
 
-## TODO
+## Development
 
-- [ ] Parser para notação algébrica padrão, Geração de notação algébrica para output, Ambiguidade resolution (Nbd2 vs Nfd2).
-- [ ] CLI with charmbracelet/bubbletea.
+```bash
+make check        # gofmt, go vet and go test -race (what CI runs)
+make perft        # full perft suite (slow)
+make bench        # benchmarks
+make help         # every target
+```
 
-## How to build
+See [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) for testing, benchmarking and debug logging.
 
-To run script to run some scenarios, you need:
+## License
 
-- to build `go build -o bin/chess cmd/cli/*.go`
-- to run `./bin/chess`
+[MIT](LICENSE)

@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"idylicaro/go-chess/internal/debug"
-	"idylicaro/go-chess/pkg/chess"
+	"github.com/idylicaro/go-chess/internal/debug"
+	"github.com/idylicaro/go-chess/pkg/chess"
 	"os"
 	"strings"
 )
@@ -13,7 +13,7 @@ func main() {
 	fmt.Println("Starting Go Chess Engine...")
 
 	// Initialize debug mode from environment variables
-	debug.EnableFromEnvironment()
+	_ = debug.EnableFromEnvironment()
 
 	scanner := bufio.NewScanner(os.Stdin)
 

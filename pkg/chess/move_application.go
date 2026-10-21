@@ -2,8 +2,8 @@ package chess
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/internal/uci"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/uci"
 )
 
 // applyMoveToBoard performs every board change of move: the piece itself plus

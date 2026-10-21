@@ -3,7 +3,7 @@ package chess
 
 import (
 	"errors"
-	"idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/common"
 	"testing"
 	// Verifique o caminho real do seu pacote common
 )
@@ -29,7 +29,7 @@ func TestBoard_AddPiece(t *testing.T) {
 			name: "Add rook to occupied square",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(common.White), 0, 0)
+				_ = b.AddPiece(NewPawn(common.White), 0, 0)
 				return b.(*Board)
 			}(),
 			pieceToAdd: NewRook(common.Black),
@@ -87,7 +87,7 @@ func TestBoard_RemovePiece(t *testing.T) {
 			name: "Remove pawn from occupied square",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(common.White), 0, 0)
+				_ = b.AddPiece(NewPawn(common.White), 0, 0)
 				return b.(*Board)
 			}(),
 			x: 0, y: 0,
@@ -141,7 +141,7 @@ func TestBoard_MovePiece(t *testing.T) {
 			name: "Move Pawn to empty square",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(common.White), 0, 6)
+				_ = b.AddPiece(NewPawn(common.White), 0, 6)
 				b.SetKingPosition(common.White, 4, 7) // Set king pos
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
@@ -157,8 +157,8 @@ func TestBoard_MovePiece(t *testing.T) {
 			name: "Move Rook to capture opponent",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewRook(common.White), 0, 7)
-				b.AddPiece(NewPawn(common.Black), 0, 5)
+				_ = b.AddPiece(NewRook(common.White), 0, 7)
+				_ = b.AddPiece(NewPawn(common.Black), 0, 5)
 				b.SetKingPosition(common.White, 4, 7) // Set king pos
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
@@ -174,7 +174,7 @@ func TestBoard_MovePiece(t *testing.T) {
 			name: "Move King and update KingPosition",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewKing(common.White), 4, 7)
+				_ = b.AddPiece(NewKing(common.White), 4, 7)
 				b.SetKingPosition(common.White, 4, 7) // Initial king pos
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
@@ -205,7 +205,7 @@ func TestBoard_MovePiece(t *testing.T) {
 			name: "Move to invalid coordinates",
 			initialBoard: func() *Board {
 				b := NewBoard(nil)
-				b.AddPiece(NewPawn(common.White), 0, 6)
+				_ = b.AddPiece(NewPawn(common.White), 0, 6)
 				b.SetKingPosition(common.White, 4, 7)
 				b.SetKingPosition(common.Black, 4, 0)
 				return b.(*Board)
