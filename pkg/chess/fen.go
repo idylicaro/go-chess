@@ -36,6 +36,7 @@ func ParseFEN(fen string) (*Game, error) {
 		return nil, fmt.Errorf("invalid FEN %q: %w", fen, err)
 	}
 	game.initialFEN = game.FEN()
+	game.hash = game.computeHash()
 	game.updateGameState()
 	return game, nil
 }

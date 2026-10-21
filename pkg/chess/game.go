@@ -21,7 +21,8 @@ type Game struct {
 	halfMoveClock   int              // Plies since the last capture or pawn move, for the fifty-move rule
 	fullMoveNumber  int              // Starts at 1, incremented after each Black move (FEN)
 	initialFEN      string           // Position the game started from, replayed for PGN export
-	positionHistory map[string]int   // For threefold repetition
+	positionHistory []uint64         // Zobrist keys of the positions reached, for threefold repetition
+	hash            uint64           // Zobrist key of the current position, kept by makeMove
 	moveHistory     []uci.Move       // For move history tracking
 	gameTimer       *timer.GameTimer // Timer control
 	drawReason      DrawReason       // Why the game is drawn; DrawNone otherwise
@@ -52,7 +53,7 @@ const (
 
 // NewGame creates an untimed game from the standard starting position.
 func NewGame() *Game {
-	return &Game{
+	game := &Game{
 		board:           newInitialBoard(),
 		currentTurn:     common.White,
 		state:           InProgress,
@@ -62,6 +63,11 @@ func NewGame() *Game {
 		initialFEN:      StartingFEN,
 		gameTimer:       nil, // No timer by default
 	}
+	game.hash = game.computeHash()
+	// The starting position counts towards threefold repetition, as it
+	// already did for games from ParseFEN.
+	game.positionHistory = []uint64{game.hash}
+	return game
 }
 
 // NewTimedGame creates a game with a chess clock reading time from clock.
@@ -328,45 +334,6 @@ func (g *Game) automaticDrawReason() DrawReason {
 		return DrawInsufficientMaterial
 	}
 	return DrawNone
-}
-
-func (g *Game) isThreefoldRepetition() bool {
-	// Gerar hash da posição atual
-	currentHash := g.generatePositionHash()
-
-	// Inicializar o mapa se não existir
-	if g.positionHistory == nil {
-		g.positionHistory = make(map[string]int)
-	}
-
-	// Incrementar o contador para a posição atual
-	g.positionHistory[currentHash]++
-
-	// Verificar se a posição se repetiu 3 vezes
-	return g.positionHistory[currentHash] >= 3
-}
-
-func (g *Game) generatePositionHash() string {
-	hash := ""
-
-	// Pieces position
-	for x := 0; x < 8; x++ {
-		for y := 0; y < 8; y++ {
-			piece, _ := g.board.GetPiece(x, y)
-			if piece != nil {
-				hash += fmt.Sprintf("%d%d%s%s", x, y, piece.GetColor(), piece.GetType())
-			}
-		}
-	}
-
-	hash += fmt.Sprintf("turn:%s", g.currentTurn)
-
-	if g.enPassantTarget != nil {
-		hash += fmt.Sprintf("ep:%d%d", g.enPassantTarget.X, g.enPassantTarget.Y)
-	}
-
-	hash += fmt.Sprintf("castle:%d", g.castlingRights)
-	return hash
 }
 
 // GetDebugInfo implements debug.GameStateProvider

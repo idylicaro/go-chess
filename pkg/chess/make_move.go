@@ -11,6 +11,7 @@ type moveUndo struct {
 	castlingRights  CastlingRights
 	enPassantTarget *Position
 	halfMoveClock   int
+	hash            uint64
 }
 
 // makeMove plays a pseudo-legal move on the game's own board: the piece, the
@@ -24,14 +25,14 @@ type moveUndo struct {
 func (g *Game) makeMove(move genMove) moveUndo {
 	board := g.board
 	mover := board.squares[move.from]
-	undo := moveUndo{board.squares[move.to], move.to, g.castlingRights, g.enPassantTarget, g.halfMoveClock}
+	undo := moveUndo{board.squares[move.to], move.to, g.castlingRights, g.enPassantTarget, g.halfMoveClock, g.hash}
 	if mover.pieceType() == common.Pawn && g.isEnPassantSquare(int(move.to)) {
 		undo.capturedAt = move.to - int8(8*pawnForward(g.currentTurn))
 		undo.captured = board.squares[undo.capturedAt]
-		board.squares[undo.capturedAt] = noPiece
+		g.putCode(int(undo.capturedAt), noPiece)
 	}
-	board.squares[move.from] = noPiece
-	board.squares[move.to] = promotedCode(mover, move)
+	g.putCode(int(move.from), noPiece)
+	g.putCode(int(move.to), promotedCode(mover, move))
 	if mover.pieceType() == common.King {
 		g.moveKing(move)
 	}
@@ -54,6 +55,7 @@ func (g *Game) unmakeMove(move genMove, undo moveUndo) {
 		g.unmoveKing(move)
 	}
 	g.castlingRights, g.enPassantTarget, g.halfMoveClock = undo.castlingRights, undo.enPassantTarget, undo.halfMoveClock
+	g.hash = undo.hash
 	if g.currentTurn == common.Black {
 		g.fullMoveNumber--
 	}
@@ -71,8 +73,8 @@ func promotedCode(mover pieceCode, move genMove) pieceCode {
 func (g *Game) moveKing(move genMove) {
 	g.board.kings[g.currentTurn] = squarePositions[move.to]
 	if rookFrom, rookTo, castles := castlingRookSquares(move); castles {
-		g.board.squares[rookTo] = g.board.squares[rookFrom]
-		g.board.squares[rookFrom] = noPiece
+		g.putCode(rookTo, g.board.squares[rookFrom])
+		g.putCode(rookFrom, noPiece)
 	}
 }
 
@@ -98,14 +100,17 @@ func castlingRookSquares(move genMove) (rookFrom, rookTo int, castles bool) {
 }
 
 // advanceCounters updates the halfmove clock (#5), castling rights, the en
-// passant target, the fullmove number and the turn after mover moved.
+// passant target, the fullmove number, the turn and their share of the hash
+// after mover moved.
 func (g *Game) advanceCounters(mover, captured pieceCode, move genMove) {
 	g.halfMoveClock++
 	if mover.pieceType() == common.Pawn || captured != noPiece {
 		g.halfMoveClock = 0
 	}
+	g.hash ^= zobrist.castling[g.castlingRights] ^ enPassantKey(g.enPassantTarget) ^ zobrist.black
 	g.castlingRights = g.castlingRights.afterMove(mover, int(move.from), int(move.to))
 	g.enPassantTarget = enPassantTargetAfter(mover, move)
+	g.hash ^= zobrist.castling[g.castlingRights] ^ enPassantKey(g.enPassantTarget)
 	if g.currentTurn == common.Black {
 		g.fullMoveNumber++
 	}
