@@ -51,7 +51,7 @@ func runPGN(e env, args []string) error {
 	if len(moves) > 0 {
 		last = &moves[len(moves)-1]
 	}
-	printPosition(e.out, game, render.Options{Style: e.style(styleOpts)}, last)
+	printPosition(e.out, game, render.Options{Style: e.style(styleOpts), Material: true, Captured: parsed.Tag("FEN") == ""}, last)
 	fmt.Fprintf(e.out, "FEN: %s\n", game.FEN())
 	if parsed.Result != "" {
 		fmt.Fprintf(e.out, "Result: %s\n", parsed.Result)

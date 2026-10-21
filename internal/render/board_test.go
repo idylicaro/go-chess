@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/idylicaro/go-chess/internal/common"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
@@ -193,5 +194,66 @@ func TestParseSquare(t *testing.T) {
 		if _, ok := ParseSquare(name); ok {
 			t.Errorf("ParseSquare(%q) succeeded", name)
 		}
+	}
+}
+
+func TestMaterialAndCaptured(t *testing.T) {
+	game := chess.NewGame()
+	if w, b := Material(game.GetBoard()); w != 39 || b != 39 {
+		t.Errorf("starting material = %d, %d", w, b)
+	}
+	if byWhite, byBlack := Captured(game.GetBoard()); len(byWhite) != 0 || len(byBlack) != 0 {
+		t.Errorf("captures at the start: %v %v", byWhite, byBlack)
+	}
+	play(t, game, "e4", "d5", "exd5", "Qxd5", "Nc3", "Qxg2", "Nf3", "Qxh1")
+	// White took a pawn; Black took pawns g2 and a rook, and the queen took d5's pawn.
+	byWhite, byBlack := Captured(game.GetBoard())
+	if len(byWhite) != 1 || byWhite[0] != common.Pawn {
+		t.Errorf("White captured %v, want one pawn", byWhite)
+	}
+	want := []common.PieceType{common.Rook, common.Pawn, common.Pawn}
+	if len(byBlack) != 3 || byBlack[0] != want[0] || byBlack[1] != want[1] || byBlack[2] != want[2] {
+		t.Errorf("Black captured %v, want %v", byBlack, want)
+	}
+	if got := Balance(game.GetBoard()); got != -6 { // white lost R+2P (7), black lost P (1)
+		t.Errorf("balance = %d, want -6", got)
+	}
+}
+
+func TestCapturedWithPromotion(t *testing.T) {
+	// White has promoted a pawn to a second queen and Black has lost no piece.
+	game := mustGame(t, "rnbqkbnr/pppppppp/8/8/8/8/1PPPPPPP/RNBQKBNR w KQkq - 0 1")
+	byWhite, byBlack := Captured(game.GetBoard())
+	if len(byWhite) != 0 || len(byBlack) != 1 || byBlack[0] != common.Pawn {
+		t.Errorf("one missing pawn: %v %v", byWhite, byBlack)
+	}
+	// A second queen and seven pawns: the pawn promoted, nobody lost a piece.
+	promoted := mustGame(t, "rnbqkbnr/pppppppp/8/8/8/Q7/1PPPPPPP/RNBQKBNR w KQkq - 0 1")
+	_, byBlack = Captured(promoted.GetBoard())
+	if len(byBlack) != 0 {
+		t.Errorf("a promoted piece must not count as captured pawn twice: %v", byBlack)
+	}
+}
+
+func TestMaterialSnapshots(t *testing.T) {
+	game := chess.NewGame()
+	play(t, game, "e4", "d5", "exd5", "Qxd5", "Nc3", "Qxg2", "Nf3", "Qxh1")
+	for name, style := range styles {
+		t.Run(name, func(t *testing.T) {
+			golden(t, "material_"+name, Board(game.GetBoard(), Options{Style: style, Material: true, Captured: true}))
+		})
+	}
+	golden(t, "material_flipped", Board(game.GetBoard(), Options{Flipped: true, Material: true, Captured: true}))
+	golden(t, "material_balance_only", Board(game.GetBoard(), Options{Material: true}))
+}
+
+func TestNoMaterialLinesByDefault(t *testing.T) {
+	out := Board(chess.NewGame().GetBoard(), Options{})
+	if strings.Count(out, "\n") != 9 {
+		t.Errorf("board has %d lines, want 9", strings.Count(out, "\n"))
+	}
+	out = Board(chess.NewGame().GetBoard(), Options{Material: true, Captured: true})
+	if strings.Count(out, "\n") != 11 || !strings.HasPrefix(out, "\n") {
+		t.Errorf("with material enabled the board keeps a line above and below:\n%q", out)
 	}
 }

@@ -85,6 +85,7 @@ func newSession(e env, opts playOptions) (*session, error) {
 		return nil, err
 	}
 
+	s.standardStart = s.game.FEN() == chess.StartingFEN
 	if opts.enginePath != "" {
 		humanColor := chess.White
 		if opts.color == "black" {

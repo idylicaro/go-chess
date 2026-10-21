@@ -19,6 +19,12 @@ type Options struct {
 	Check    *chess.Position  // king in check
 	Selected *chess.Position  // piece picked up
 	Targets  []chess.Position // where the selected piece can go
+
+	// Material shows who is ahead ("+3") on the side that is. Captured also
+	// shows the pieces each side has taken; it assumes the game started from
+	// the standard position.
+	Material bool
+	Captured bool
 }
 
 // 256-color palette: board squares, piece colors and highlights.
@@ -61,6 +67,8 @@ var (
 //	fmt.Print(render.Board(game.GetBoard(), render.Options{Style: style}))
 func Board(b chess.IBoard, opts Options) string {
 	var out strings.Builder
+	top, bottom := opts.sideLines(b)
+	out.WriteString(top)
 	for row := 0; row < 8; row++ {
 		y := row
 		if opts.Flipped {
@@ -84,7 +92,35 @@ func Board(b chess.IBoard, opts Options) string {
 		}
 		fmt.Fprintf(&out, " %c ", 'a'+x)
 	}
-	return strings.TrimRight(out.String(), " ") + "\n"
+	return strings.TrimRight(out.String(), " ") + "\n" + bottom
+}
+
+// sideLines are the lines above and below the board with what the side
+// shown at the top and at the bottom has captured; each is empty, or ends in
+// a newline.
+func (o Options) sideLines(b chess.IBoard) (top, bottom string) {
+	if !o.Material && !o.Captured {
+		return "", ""
+	}
+	byWhite, byBlack := Captured(b)
+	if !o.Captured {
+		byWhite, byBlack = nil, nil
+	}
+	balance := Balance(b)
+	// What White took is black pieces, and the other way around.
+	whiteLine := materialLine(byWhite, false, max(balance, 0), o.Style)
+	blackLine := materialLine(byBlack, true, max(-balance, 0), o.Style)
+	if o.Flipped {
+		return sideLine(whiteLine), sideLine(blackLine)
+	}
+	return sideLine(blackLine), sideLine(whiteLine)
+}
+
+func sideLine(text string) string {
+	if text == "" {
+		return "\n"
+	}
+	return "  " + text + "\n"
 }
 
 // markAt decides which highlight a square gets; a king in check beats the

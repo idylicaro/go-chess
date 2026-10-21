@@ -21,6 +21,10 @@ type session struct {
 
 	opponent *opponent // nil when two players share the keyboard
 	history  []played  // moves played in this session, oldest first
+
+	// standardStart is whether the game began from the standard position,
+	// the only one where the pieces missing from the board are captures.
+	standardStart bool
 }
 
 // played is a move made in the session and how it reads in SAN.
@@ -36,6 +40,7 @@ func (s *session) show() {
 // showWith prints the position with extra highlights, such as a selection.
 func (s *session) showWith(opts render.Options) {
 	opts.Style, opts.Flipped = s.style, s.flipped
+	opts.Material, opts.Captured = true, s.standardStart
 	var last *chess.Move
 	if n := len(s.history); n > 0 {
 		last = &s.history[n-1].move

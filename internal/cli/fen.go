@@ -27,7 +27,7 @@ func runFEN(e env, args []string) error {
 		return err
 	}
 	fmt.Fprintf(e.out, "FEN:         %s\n", game.FEN())
-	printPosition(e.out, game, render.Options{Style: e.style(styleOpts)}, nil)
+	printPosition(e.out, game, render.Options{Style: e.style(styleOpts), Material: true}, nil)
 	fmt.Fprintf(e.out, "Legal moves: %d\n", len(game.LegalMoves()))
 	return nil
 }
