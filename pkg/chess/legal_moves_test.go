@@ -1,6 +1,7 @@
 package chess
 
 import (
+	"fmt"
 	"github.com/idylicaro/go-chess/internal/common"
 	"github.com/idylicaro/go-chess/internal/uci"
 	"testing"
@@ -88,4 +89,25 @@ func TestEnPassant_AllowedAndRemovesCapturedPawn(t *testing.T) {
 	if captured, _ := game.board.GetPiece(3, 3); captured != nil {
 		t.Errorf("pawn on d5 should have been captured en passant, found %v", captured.GetType())
 	}
+}
+
+// getLegalMovesForPiece is a test and benchmark helper: it lists the squares
+// the piece on (fromX, fromY) can legally reach; a promotion counts once,
+// whatever the piece.
+func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
+	piece, err := g.board.GetPiece(fromX, fromY)
+	if err != nil {
+		return nil, err
+	}
+	if piece == nil || piece.GetColor() != g.currentTurn {
+		return nil, fmt.Errorf("the square %s holds no piece of %v, whose turn it is", squareName(fromX, fromY), g.currentTurn)
+	}
+	from := int8(squareIndex(fromX, fromY))
+	var destinations []Position
+	for _, move := range g.appendLegalMoves(nil) {
+		if move.from == from && (move.promotion == common.Pawn || move.promotion == common.Queen) {
+			destinations = append(destinations, squarePositions[move.to])
+		}
+	}
+	return destinations, nil
 }

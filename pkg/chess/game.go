@@ -223,26 +223,6 @@ func (g *Game) findGenMove(move uci.Move) (genMove, bool) {
 	return genMove{}, false
 }
 
-// getLegalMovesForPiece lists the squares the piece on (fromX, fromY) can
-// legally reach; a promotion counts once, whatever the piece.
-func (g *Game) getLegalMovesForPiece(fromX, fromY int) ([]Position, error) {
-	piece, err := g.board.GetPiece(fromX, fromY)
-	if err != nil {
-		return nil, err
-	}
-	if piece == nil || piece.GetColor() != g.currentTurn {
-		return nil, fmt.Errorf("the square %s holds no piece of %v, whose turn it is", squareName(fromX, fromY), g.currentTurn)
-	}
-	from := int8(squareIndex(fromX, fromY))
-	var destinations []Position
-	for _, move := range g.appendLegalMoves(nil) {
-		if move.from == from && (move.promotion == common.Pawn || move.promotion == common.Queen) {
-			destinations = append(destinations, squarePositions[move.to])
-		}
-	}
-	return destinations, nil
-}
-
 func (g *Game) getOpponentColor() common.Color {
 	return opposite(g.currentTurn)
 }

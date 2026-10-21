@@ -24,7 +24,7 @@ var zobrist = buildZobristKeys()
 func buildZobristKeys() *zobristKeys {
 	keys := &zobristKeys{}
 	state := uint64(zobristSeed)
-	for code := range pieceViews {
+	for code := range keys.piece {
 		if pieceCode(code) == noPiece {
 			continue
 		}
