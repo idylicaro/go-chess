@@ -1,41 +1,42 @@
-package main
+package cli
 
 import (
 	"fmt"
 	"github.com/idylicaro/go-chess/internal/common"
 	"github.com/idylicaro/go-chess/pkg/chess"
+	"io"
 	"time"
 )
 
-func DisplayBoard(b chess.IBoard, validMoves []chess.Position) {
-	fmt.Println("  -----------------")
+func displayBoard(w io.Writer, b chess.IBoard, validMoves []chess.Position) {
+	fmt.Fprintln(w, "  -----------------")
 	for y, py := 0, 8; y < 8; y, py = y+1, py-1 { // py == presentationY
-		fmt.Printf("%d |", py)
+		fmt.Fprintf(w, "%d |", py)
 		for x := 0; x < 8; x++ { // col a-h
 			piece, err := b.GetPiece(x, y)
 			if err == nil && piece != nil {
-				fmt.Printf(" %s", getPieceChar(piece))
+				fmt.Fprintf(w, " %s", getPieceChar(piece))
 			} else {
 				isMove := false
 				for _, move := range validMoves {
 					if move.X == x && move.Y == y {
-						fmt.Printf(" x")
+						fmt.Fprintf(w, " x")
 						isMove = true
 						break
 					}
 				}
 				if !isMove {
-					fmt.Printf(" .")
+					fmt.Fprintf(w, " .")
 				}
 			}
 		}
-		fmt.Println(" |")
+		fmt.Fprintln(w, " |")
 	}
-	fmt.Println("  -----------------")
-	fmt.Println("    a b c d e f g h")
+	fmt.Fprintln(w, "  -----------------")
+	fmt.Fprintln(w, "    a b c d e f g h")
 }
 
-func DisplayGameState(game *chess.Game) {
+func displayGameState(w io.Writer, game *chess.Game) {
 	var turn, state string
 	if game.GetCurrentTurn() == common.White {
 		turn = "White"
@@ -64,7 +65,7 @@ func DisplayGameState(game *chess.Game) {
 		state = "Timeout - White Wins"
 	}
 
-	fmt.Printf("\n--- Current State: %s | Turn: %s ---\n", state, turn)
+	fmt.Fprintf(w, "\n--- Current State: %s | Turn: %s ---\n", state, turn)
 
 	// Display timer information if available
 	if game.HasTimer() {
@@ -72,7 +73,7 @@ func DisplayGameState(game *chess.Game) {
 		blackTime, err2 := game.GetRemainingTime(common.Black)
 
 		if err1 == nil && err2 == nil {
-			fmt.Printf("⏰ White: %v | Black: %v\n",
+			fmt.Fprintf(w, "⏰ White: %v | Black: %v\n",
 				formatDuration(whiteTime),
 				formatDuration(blackTime))
 		}
