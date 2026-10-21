@@ -107,7 +107,7 @@ scripts/        benchmark script
 
 ```bash
 make check        # gofmt, go vet and go test -race (what CI runs)
-make perft        # full perft suite (slow)
+make perft        # full perft suite (~600M nodes, ~15s)
 make fuzz         # fuzz FEN, SAN and PGN (FUZZTIME=2m to run longer)
 make bench        # benchmarks
 make help         # every target
