@@ -36,6 +36,10 @@ type Config struct {
 	EngineName string
 	// HumanColor is the player's side against an Engine. The board faces it.
 	HumanColor chess.Color
+	// Analyze makes the engine analyze the position instead of playing: both
+	// sides are moved by hand and the panel shows the evaluation and the main
+	// line. It needs an Engine.
+	Analyze bool
 	// Context bounds engine searches. Run sets it to its own context when it
 	// is nil.
 	Context context.Context

@@ -75,27 +75,5 @@ func analysisLine(game *chess.Game, info engine.Info) string {
 	if game.GetCurrentTurn() == chess.Black {
 		score.Value = -score.Value
 	}
-	return fmt.Sprintf("depth %2d  %6s  %s", info.Depth, score, strings.Join(pvToSAN(game.FEN(), info.PV), " "))
-}
-
-// pvToSAN converts a principal variation from UCI to SAN, stopping at the
-// first move that is not legal.
-func pvToSAN(fen string, pv []string) []string {
-	game, err := chess.ParseFEN(fen)
-	if err != nil {
-		return pv
-	}
-	var out []string
-	for _, text := range pv {
-		move, err := chess.ParseMove(text)
-		if err != nil {
-			break
-		}
-		san, err := game.SAN(move)
-		if err != nil || game.Move(move) != nil {
-			break
-		}
-		out = append(out, san)
-	}
-	return out
+	return fmt.Sprintf("depth %2d  %6s  %s", info.Depth, score, strings.Join(engine.SAN(game.FEN(), info.PV), " "))
 }

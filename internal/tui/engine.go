@@ -44,7 +44,7 @@ func (m Model) engineColor() chess.Color {
 
 // engineToMove says whether it is the engine's turn in a game still on.
 func (m Model) engineToMove() bool {
-	return m.cfg.Engine != nil && !m.engineDown && !m.game.IsOver() && m.game.GetCurrentTurn() == m.engineColor()
+	return m.cfg.Engine != nil && !m.cfg.Analyze && !m.engineDown && !m.game.IsOver() && m.game.GetCurrentTurn() == m.engineColor()
 }
 
 // limits are the search limits for the engine's turn: its clock when the

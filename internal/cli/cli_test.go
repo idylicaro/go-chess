@@ -625,6 +625,7 @@ func TestTUIRequiresATerminal(t *testing.T) {
 		t.Errorf("bad time control: exit %d", code)
 	}
 	for _, args := range [][]string{
+		{"tui", "--analyze"}, {"tui", "--analyze", "--engine", "x", "--level", "5"}, {"tui", "--analyze", "--engine", "x", "--color", "black"},
 		{"tui", "--level", "5"}, {"tui", "--color", "black"}, {"tui", "--engine", "x", "--level", "99"}, {"tui", "--engine", "x", "--color", "red"},
 	} {
 		if code, _, _ := run(t, "", args...); code != 2 {

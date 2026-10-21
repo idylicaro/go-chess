@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/idylicaro/go-chess/internal/engine"
 	"github.com/idylicaro/go-chess/internal/render"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
@@ -62,6 +63,11 @@ type Model struct {
 	searchGen    int
 	cancelSearch context.CancelFunc
 
+	// Analysis mode: the position being analyzed and what the engine said.
+	analysisFEN string
+	analysis    engine.Info
+	hasAnalysis bool
+
 	// Terminal size, known after the first WindowSizeMsg.
 	width, height int
 }
@@ -90,7 +96,7 @@ func New(cfg Config) (Model, error) {
 		cfg.TickInterval = defaultTickInterval
 	}
 	m := Model{cfg: cfg, game: game, cursor: chess.Position{X: 4, Y: 6}} // e2
-	if cfg.Engine != nil && cfg.HumanColor == chess.Black {
+	if cfg.Engine != nil && !cfg.Analyze && cfg.HumanColor == chess.Black {
 		m.flipped, m.cursor = true, chess.Position{X: 4, Y: 1} // e7
 	}
 	return m, nil
@@ -108,7 +114,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 	model, search := model.startSearch()
-	return model, tea.Batch(cmd, search)
+	model, analysis := model.syncAnalysis()
+	return model, tea.Batch(cmd, search, analysis)
 }
 
 func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -125,6 +132,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateEngineMove(msg)
 	case spinMsg:
 		return m.updateSpin(msg)
+	case analysisMsg:
+		return m.updateAnalysis(msg)
 	}
 	return m, nil
 }
@@ -169,6 +178,7 @@ func (m Model) enterGame() (Model, tea.Cmd) {
 // leaveGame goes back to the menu and stops the clock.
 func (m Model) leaveGame() Model {
 	m = m.stopSearch() // it starts again when the player comes back
+	m.analysisFEN = ""
 	m.screen = screenMenu
 	if m.game.HasTimer() && !m.game.IsOver() {
 		_ = m.game.PauseTimer()
@@ -344,7 +354,7 @@ func (m Model) play(move chess.Move) Model {
 func (m Model) undo() Model {
 	m = m.deselect()
 	plies := 1
-	if m.cfg.Engine != nil && m.game.GetCurrentTurn() == m.cfg.HumanColor {
+	if m.cfg.Engine != nil && !m.cfg.Analyze && m.game.GetCurrentTurn() == m.cfg.HumanColor {
 		plies = 2
 	}
 	if len(m.history) < plies {

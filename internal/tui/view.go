@@ -72,14 +72,14 @@ func (m Model) gameView() string {
 		moves[i] = h.san
 	}
 	number, blackFirst := firstMove(m.cfg.FEN)
-	panel := render.Panel{Moves: moves, FirstMoveNumber: number, BlackFirst: blackFirst, Status: render.Status(m.game)}
+	panel := render.Panel{Moves: moves, FirstMoveNumber: number, BlackFirst: blackFirst, Status: render.Status(m.game), Analysis: m.analysisPanel()}
 	if m.game.HasTimer() {
 		white, _ := m.game.GetRemainingTime(chess.White)
 		black, _ := m.game.GetRemainingTime(chess.Black)
 		panel.Clocks = &render.Clocks{White: white, Black: black, Active: m.game.GetCurrentTurn(), Stopped: m.game.IsOver()}
 	}
 	position := strings.TrimRight(render.SideBySide(render.Board(m.game.GetBoard(), opts), panel.String(), 3), "\n")
-	return lipgloss.JoinVertical(lipgloss.Left, titleStyle.Render("♞ go-chess"), "", position, "", m.footer())
+	return lipgloss.JoinVertical(lipgloss.Left, m.title(), "", position, "", m.footer())
 }
 
 // footer is the line under the board: the promotion dialog, a message or the keys.
@@ -133,4 +133,16 @@ func firstMove(fen string) (number int, blackFirst bool) {
 		fmt.Sscanf(fields[5], "%d", &number)
 	}
 	return max(number, 1), blackFirst
+}
+
+func (m Model) title() string {
+	title := titleStyle.Render("♞ go-chess")
+	if m.analyzing() {
+		name := m.cfg.EngineName
+		if name == "" {
+			name = "engine"
+		}
+		title += helpStyle.Render("  analysis · " + name)
+	}
+	return title
 }

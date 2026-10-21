@@ -217,3 +217,28 @@ func TestStartMissingBinary(t *testing.T) {
 		t.Error("expected an error for a missing binary")
 	}
 }
+
+func TestSANAndLine(t *testing.T) {
+	start := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+	pv := []string{"e2e4", "e7e5", "g1f3", "b8c6"}
+	if got := strings.Join(SAN(start, pv), " "); got != "e4 e5 Nf3 Nc6" {
+		t.Errorf("SAN = %q", got)
+	}
+	if got := Line(start, pv); got != "1. e4 e5 2. Nf3 Nc6" {
+		t.Errorf("Line = %q", got)
+	}
+	black := "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 7"
+	if got := Line(black, []string{"e7e5", "g1f3", "b8c6"}); got != "7... e5 8. Nf3 Nc6" {
+		t.Errorf("Line from Black = %q", got)
+	}
+	// It stops at a move that is not legal, and survives junk.
+	if got := Line(start, []string{"e2e4", "e2e4", "e7e5"}); got != "1. e4" {
+		t.Errorf("Line with an illegal move = %q", got)
+	}
+	if got := Line(start, []string{"zz"}); got != "" {
+		t.Errorf("Line of junk = %q", got)
+	}
+	if got := SAN("junk", pv); got != nil {
+		t.Errorf("SAN from a bad FEN = %v", got)
+	}
+}

@@ -14,6 +14,7 @@ func runTUI(e env, args []string) error {
 	enginePath := fs.String("engine", "", "UCI engine to play against, like stockfish (default: two players at one keyboard)")
 	level := fs.Int("level", -1, "engine strength from 0 to 20 (needs --engine)")
 	color := fs.String("color", "white", "your side against the engine: white or black (needs --engine)")
+	analyze := fs.Bool("analyze", false, "let the engine analyze the position instead of playing; move both sides by hand (needs --engine)")
 	timeText := fs.String("time", "", "time control as minutes+increment seconds, like 5+3 (default: untimed)")
 	styleOpts := addStyleFlags(fs)
 	rest, err := parseFlags(fs, args)
@@ -25,6 +26,12 @@ func runTUI(e env, args []string) error {
 	}
 	if *enginePath == "" && (*level >= 0 || *color != "white") {
 		return usagef("--level and --color only apply when playing against an engine; add --engine")
+	}
+	if *analyze && *enginePath == "" {
+		return usagef("--analyze needs an engine to analyze with; add --engine")
+	}
+	if *analyze && (*level >= 0 || *color != "white") {
+		return usagef("--level and --color do not apply to --analyze: the engine analyzes at full strength")
 	}
 	if *level > maxSkillLevel {
 		return usagef("invalid --level %d: expected 0 to %d", *level, maxSkillLevel)
@@ -47,6 +54,7 @@ func runTUI(e env, args []string) error {
 		return errors.New("the TUI needs a terminal; use \"chess play\" for plain output")
 	}
 	if *enginePath != "" {
+		cfg.Analyze = *analyze
 		eng, err := openEngine(*enginePath, *level)
 		if err != nil {
 			return err

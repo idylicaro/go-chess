@@ -60,8 +60,21 @@ type Panel struct {
 	FirstMoveNumber int
 	BlackFirst      bool
 	Status          string
+	// Analysis, if set, adds the engine's evaluation and main line.
+	Analysis *Analysis
 	// Rows is how many lines of moves fit; older moves scroll off. Zero means 8.
 	Rows int
+}
+
+// Analysis is what an engine thinks of the position.
+type Analysis struct {
+	Eval  Eval
+	Depth int
+	// Line is the main line, as numbered SAN.
+	Line  string
+	Style Style
+	// Pending is true until the engine has said anything about the position.
+	Pending bool
 }
 
 const (
@@ -77,7 +90,12 @@ func (p Panel) String() string {
 		lines = append(lines, clockLine("Black", c.Black, c, chess.Black), clockLine("White", c.White, c, chess.White), rule)
 	}
 	lines = append(lines, p.moveLines()...)
-	lines = append(lines, rule, p.Status)
+	lines = append(lines, rule)
+	if a := p.Analysis; a != nil {
+		lines = append(lines, a.lines()...)
+		lines = append(lines, rule)
+	}
+	lines = append(lines, p.Status)
 	return strings.Join(lines, "\n") + "\n"
 }
 
@@ -172,4 +190,53 @@ func SideBySide(left, right string, gap int) string {
 		out.WriteString(l + strings.Repeat(" ", column-width(l)+gap) + r + "\n")
 	}
 	return out.String()
+}
+
+// maxLineRows is how many rows of the main line the panel shows.
+const maxLineRows = 3
+
+func (a Analysis) lines() []string {
+	if a.Pending {
+		return []string{"Analyzing…"}
+	}
+	lines := []string{
+		fmt.Sprintf("Eval %-7s depth %d", a.Eval, a.Depth),
+		EvalBar(a.Eval, panelWidth, a.Style),
+	}
+	return append(lines, wrapWords(a.Line, panelWidth, maxLineRows)...)
+}
+
+// wrapWords breaks text into lines of at most width runes, keeping at most
+// rows lines and ending the last with an ellipsis if text was cut.
+func wrapWords(text string, width, rows int) []string {
+	var lines []string
+	current := ""
+	words := strings.Fields(text)
+	for _, word := range words {
+		switch {
+		case current == "":
+			current = word
+		case utf8.RuneCountInString(current)+1+utf8.RuneCountInString(word) <= width:
+			current += " " + word
+		default:
+			lines = append(lines, current)
+			current = word
+		}
+		if len(lines) == rows {
+			lines[rows-1] = truncate(lines[rows-1], width-1) + "…"
+			return lines
+		}
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
+}
+
+func truncate(s string, width int) string {
+	runes := []rune(s)
+	if len(runes) <= width {
+		return s
+	}
+	return string(runes[:width])
 }
