@@ -95,3 +95,21 @@ func TestPGN_WrapsMovetextAt80Columns(t *testing.T) {
 		}
 	}
 }
+
+func TestPGN_TimeControlTagIsOptional(t *testing.T) {
+	game := NewGame()
+	plain, err := game.PGN(PGNHeaders{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(plain, "TimeControl") {
+		t.Errorf("tag present without a time control:\n%s", plain)
+	}
+	timed, err := game.PGN(PGNHeaders{TimeControl: "300+3"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(timed, "[Result \"*\"]\n[TimeControl \"300+3\"]\n") {
+		t.Errorf("tag missing or misplaced:\n%s", timed)
+	}
+}

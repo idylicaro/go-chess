@@ -12,8 +12,11 @@ const pgnLineWidth = 80
 // PGNHeaders are the Seven Tag Roster values supplied by the caller; the
 // Result tag is derived from the game. Empty values export as "?"
 // ("????.??.??" for Date), as the PGN standard prescribes for unknowns.
+// TimeControl is the optional supplemental tag in seconds, like "300+3";
+// when empty the tag is left out.
 type PGNHeaders struct {
 	Event, Site, Date, Round, White, Black string
+	TimeControl                            string
 }
 
 // PGN exports the game in PGN export format: the Seven Tag Roster, plus
@@ -82,6 +85,9 @@ func (g *Game) pgnTagSection(headers PGNHeaders, result string) string {
 		{"White", orUnknown(headers.White, "?")},
 		{"Black", orUnknown(headers.Black, "?")},
 		{"Result", result},
+	}
+	if headers.TimeControl != "" {
+		tags = append(tags, [2]string{"TimeControl", headers.TimeControl})
 	}
 	if g.initialFEN != StartingFEN {
 		tags = append(tags, [2]string{"SetUp", "1"}, [2]string{"FEN", g.initialFEN})

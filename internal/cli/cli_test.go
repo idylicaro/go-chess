@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/idylicaro/go-chess/internal/pgnread"
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
@@ -454,5 +456,49 @@ func TestResignAgainstEngine(t *testing.T) {
 	out := playWith(t, engineFlags("--color", "black"), "resign")
 	if !strings.Contains(out, "Black resigned") || !strings.Contains(out, "Result: 1-0") {
 		t.Errorf("output:\n%s", out)
+	}
+}
+
+func TestPGNOutToFileHasHeaders(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "game.pgn")
+	out := playWith(t, []string{"--time", "5+3", "--pgn-out", path}, "f3", "e5", "g4", "Qh4#")
+	if !strings.Contains(out, "PGN saved to "+path) {
+		t.Errorf("no confirmation:\n%s", out)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pgn := string(data)
+	for _, want := range []string{`[Result "0-1"]`, `[TimeControl "300+3"]`, `[White "White"]`, "1. f3 e5 2. g4 Qh4# 0-1"} {
+		if !strings.Contains(pgn, want) {
+			t.Errorf("PGN lacks %q:\n%s", want, pgn)
+		}
+	}
+	if !regexp.MustCompile(`\[Date "\d{4}\.\d{2}\.\d{2}"\]`).MatchString(pgn) {
+		t.Errorf("PGN has no date:\n%s", pgn)
+	}
+	// What was written reads back.
+	games, err := pgnread.Parse(pgn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := games[0].Replay(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestPGNOutToStdoutAlsoWhenLeavingEarly(t *testing.T) {
+	out := playWith(t, []string{"--pgn-out", "-"}, "e4", "exit")
+	if !strings.Contains(out, `[Result "*"]`) || !strings.Contains(out, "1. e4 *") || strings.Contains(out, "TimeControl") {
+		t.Errorf("output:\n%s", out)
+	}
+}
+
+func TestPGNOutUnwritable(t *testing.T) {
+	bad := filepath.Join(t.TempDir(), "no", "such", "dir", "game.pgn")
+	code, _, errOut := run(t, "exit\n", "play", "--pgn-out", bad)
+	if code != 1 || !strings.Contains(errOut, "writing PGN") {
+		t.Errorf("exit %d, stderr %q", code, errOut)
 	}
 }

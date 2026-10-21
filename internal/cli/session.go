@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/idylicaro/go-chess/pkg/chess"
 )
@@ -19,6 +20,8 @@ type session struct {
 	flipped     bool // show the board from Black's side
 	style       style
 	timeControl *chess.TimeConfig // nil on an untimed game
+
+	pgnOut string // where to write the PGN when the session ends; empty for nowhere
 
 	opponent *opponent // nil when two players share the keyboard
 	plies    int       // moves played in this session, to undo a pair against the engine
@@ -157,6 +160,9 @@ func (s *session) pgnHeaders() chess.PGNHeaders {
 		White: "White",
 		Black: "Black",
 	}
+	if s.timeControl != nil {
+		headers.TimeControl = formatTimeControl(*s.timeControl)
+	}
 	if s.opponent != nil {
 		human, engine := "Player", s.opponent.engine.Name
 		if engine == "" {
@@ -169,4 +175,24 @@ func (s *session) pgnHeaders() chess.PGNHeaders {
 		}
 	}
 	return headers
+}
+
+// exportPGN writes the game to the --pgn-out destination, if there is one.
+func (s *session) exportPGN() error {
+	if s.pgnOut == "" {
+		return nil
+	}
+	text, err := s.game.PGN(s.pgnHeaders())
+	if err != nil {
+		return err
+	}
+	if s.pgnOut == "-" {
+		_, err = fmt.Fprint(s.out, "\n"+text)
+		return err
+	}
+	if err := os.WriteFile(s.pgnOut, []byte(text), 0o644); err != nil {
+		return fmt.Errorf("writing PGN: %w", err)
+	}
+	fmt.Fprintf(s.out, "PGN saved to %s\n", s.pgnOut)
+	return nil
 }

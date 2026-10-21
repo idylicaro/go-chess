@@ -20,6 +20,7 @@ type playOptions struct {
 	enginePath string
 	level      int
 	color      string
+	pgnOut     string
 	noColor    bool
 	ascii      bool
 }
@@ -32,6 +33,7 @@ func runPlay(e env, args []string) error {
 	fs.StringVar(&opts.enginePath, "engine", "", "UCI engine to play against, like stockfish (default: two players at one keyboard)")
 	fs.IntVar(&opts.level, "level", -1, "engine strength from 0 to 20 (needs --engine)")
 	fs.StringVar(&opts.color, "color", "white", "your side against the engine: white or black (needs --engine)")
+	fs.StringVar(&opts.pgnOut, "pgn-out", "", "write the game as PGN to this file when it ends, or to standard output with -")
 	fs.BoolVar(&opts.noColor, "no-color", false, "print the board without colors")
 	fs.BoolVar(&opts.ascii, "ascii", false, "draw pieces with letters instead of Unicode symbols")
 	rest, err := parseFlags(fs, args)
@@ -46,7 +48,12 @@ func runPlay(e env, args []string) error {
 		return err
 	}
 	defer s.close()
-	return s.loop()
+	s.pgnOut = opts.pgnOut
+	err = s.loop()
+	if exportErr := s.exportPGN(); exportErr != nil && err == nil {
+		err = exportErr
+	}
+	return err
 }
 
 // newSession builds the game the flags describe and, with --engine, starts
