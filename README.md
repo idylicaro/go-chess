@@ -80,7 +80,7 @@ Moves are typed in UCI notation (`e2e4`, `e7e8q`). Other commands: `moves`, `und
 cmd/cli/        terminal client
 pkg/chess/      public API: board, pieces, game, FEN, SAN, PGN, perft
 internal/       common types, clock, UCI move parsing, debug logging
-docs/           testing guide
+docs/           API surface, roadmap, testing guide
 scripts/        benchmark script
 ```
 
@@ -91,11 +91,12 @@ scripts/        benchmark script
 ```bash
 make check        # gofmt, go vet and go test -race (what CI runs)
 make perft        # full perft suite (slow)
+make fuzz         # fuzz FEN, SAN and PGN (FUZZTIME=2m to run longer)
 make bench        # benchmarks
 make help         # every target
 ```
 
-See [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) for testing, benchmarking and debug logging.
+[docs/API.md](docs/API.md) lists the stable public API. See [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) for testing, benchmarking and debug logging.
 
 ## License
 
