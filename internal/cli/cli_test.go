@@ -130,6 +130,12 @@ func TestPerft(t *testing.T) {
 	if !strings.Contains(out, "nodes: 2039") {
 		t.Errorf("kiwipete perft 2: %q", out)
 	}
+	for _, workers := range []string{"1", "3"} {
+		_, out, _ = run(t, "", "perft", "--workers", workers, "3")
+		if !strings.Contains(out, "nodes: 8902") {
+			t.Errorf("perft 3 with %s workers: %q", workers, out)
+		}
+	}
 }
 
 func TestPerftUsageErrors(t *testing.T) {

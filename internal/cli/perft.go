@@ -13,6 +13,7 @@ func runPerft(e env, args []string) error {
 	fs := newFlagSet(e, "perft", "[flags] <depth>", "Count the leaf nodes of the legal-move tree to <depth> plies,\nto check move generation against known values.")
 	fen := fs.String("fen", chess.StartingFEN, "position to start from")
 	divide := fs.Bool("divide", false, "also print the node count under each first move")
+	workers := fs.Int("workers", 0, "goroutines sharing the root moves; 0 uses every CPU (ignored with --divide)")
 	rest, err := parseFlags(fs, args)
 	if err != nil {
 		return err
@@ -44,7 +45,7 @@ func runPerft(e env, args []string) error {
 		}
 		fmt.Fprintln(e.out)
 	} else {
-		nodes = game.Perft(depth)
+		nodes = game.PerftParallel(depth, *workers)
 	}
 	elapsed := time.Since(start)
 	fmt.Fprintf(e.out, "nodes: %d\n", nodes)
