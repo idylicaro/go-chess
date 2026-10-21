@@ -73,6 +73,11 @@ func (m Model) gameView() string {
 	}
 	number, blackFirst := firstMove(m.cfg.FEN)
 	panel := render.Panel{Moves: moves, FirstMoveNumber: number, BlackFirst: blackFirst, Status: render.Status(m.game)}
+	if m.game.HasTimer() {
+		white, _ := m.game.GetRemainingTime(chess.White)
+		black, _ := m.game.GetRemainingTime(chess.Black)
+		panel.Clocks = &render.Clocks{White: white, Black: black, Active: m.game.GetCurrentTurn(), Stopped: m.game.IsOver()}
+	}
 	position := strings.TrimRight(render.SideBySide(render.Board(m.game.GetBoard(), opts), panel.String(), 3), "\n")
 	return lipgloss.JoinVertical(lipgloss.Left, titleStyle.Render("♞ go-chess"), "", position, "", m.footer())
 }

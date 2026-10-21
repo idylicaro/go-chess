@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -46,6 +48,11 @@ type Model struct {
 	promoting *promotion
 	message   string // one line under the board: why a move was refused, how the game ended
 
+	// The clock starts the first time the game screen shows and stops while
+	// the menu does. tickGen tells the current chain of ticks from stale ones.
+	clockStarted bool
+	tickGen      int
+
 	// Terminal size, known after the first WindowSizeMsg.
 	width, height int
 }
@@ -56,9 +63,22 @@ func New(cfg Config) (Model, error) {
 	if cfg.FEN == "" {
 		cfg.FEN = chess.StartingFEN
 	}
-	game, err := chess.ParseFEN(cfg.FEN)
+	var game *chess.Game
+	var err error
+	if cfg.TimeControl != nil {
+		clock := cfg.Clock
+		if clock == nil {
+			clock = chess.SystemClock{}
+		}
+		game, err = chess.ParseFENTimed(cfg.FEN, *cfg.TimeControl, clock)
+	} else {
+		game, err = chess.ParseFEN(cfg.FEN)
+	}
 	if err != nil {
 		return Model{}, fmt.Errorf("invalid starting position: %w", err)
+	}
+	if cfg.TickInterval <= 0 {
+		cfg.TickInterval = defaultTickInterval
 	}
 	return Model{cfg: cfg, game: game, cursor: chess.Position{X: 4, Y: 6}}, nil // e2
 }
@@ -76,8 +96,56 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateKey(msg)
 	case tea.MouseMsg:
 		return m.updateMouse(msg)
+	case tickMsg:
+		return m.updateTick(msg)
 	}
 	return m, nil
+}
+
+// tickMsg wakes the model to redraw the clocks and look for a flag.
+type tickMsg struct{ gen int }
+
+func (m Model) tick() tea.Cmd {
+	gen := m.tickGen
+	return tea.Tick(m.cfg.TickInterval, func(time.Time) tea.Msg { return tickMsg{gen} })
+}
+
+func (m Model) updateTick(msg tickMsg) (tea.Model, tea.Cmd) {
+	if msg.gen != m.tickGen || m.screen != screenGame || !m.game.HasTimer() || m.game.IsOver() {
+		return m, nil
+	}
+	if m.game.CheckTimeout() {
+		m = m.deselect()
+		m.promoting = nil
+		m.message = render.Status(m.game)
+		return m, nil
+	}
+	return m, m.tick()
+}
+
+// enterGame shows the game screen and starts or resumes its clock.
+func (m Model) enterGame() (Model, tea.Cmd) {
+	m.screen = screenGame
+	if !m.game.HasTimer() {
+		return m, nil
+	}
+	if m.clockStarted {
+		_ = m.game.ResumeTimer()
+	} else {
+		_ = m.game.StartTimer()
+		m.clockStarted = true
+	}
+	m.tickGen++
+	return m, m.tick()
+}
+
+// leaveGame goes back to the menu and stops the clock.
+func (m Model) leaveGame() Model {
+	m.screen = screenMenu
+	if m.game.HasTimer() && !m.game.IsOver() {
+		_ = m.game.PauseTimer()
+	}
+	return m
 }
 
 func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -91,7 +159,7 @@ func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.screen == screenMenu {
 		switch key {
 		case "enter", "n", " ":
-			m.screen = screenGame
+			return m.enterGame()
 		case "esc":
 			return m, tea.Quit
 		}
@@ -116,7 +184,7 @@ func (m Model) updateGameKey(key string) Model {
 		if m.selected != nil {
 			return m.deselect()
 		}
-		m.screen = screenMenu
+		return m.leaveGame()
 	case "f":
 		m.flipped = !m.flipped
 	case "u":
@@ -220,6 +288,10 @@ func (m Model) play(move chess.Move) Model {
 	san, err := m.game.SAN(move)
 	if err == nil {
 		err = m.game.Move(move)
+	}
+	if errors.Is(err, chess.ErrGameOver) { // the mover's clock ran out first
+		m.message = render.Status(m.game)
+		return m
 	}
 	if err != nil {
 		m.message = err.Error()

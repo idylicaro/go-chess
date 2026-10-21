@@ -127,6 +127,23 @@ func (g *Game) requireInProgress(action string) error {
 	return nil
 }
 
+// CheckTimeout ends the game if a clock has run out and reports whether it
+// did. Move already refuses a move by a side out of time, so this is for a
+// caller that wants to notice the flag without waiting for a move, such as
+// an interface that ticks. It does nothing on an untimed or finished game.
+//
+//	if game.CheckTimeout() { fmt.Println(game.Result()) }
+func (g *Game) CheckTimeout() bool {
+	if g.IsOver() {
+		return false
+	}
+	state, reason, timedOut := g.timeoutOutcome()
+	if timedOut {
+		g.endGame(state, reason)
+	}
+	return timedOut
+}
+
 // endGame finishes the game outside the normal move flow and stops the clock.
 func (g *Game) endGame(state GameState, reason DrawReason) {
 	g.state, g.drawReason = state, reason
