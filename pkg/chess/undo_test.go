@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/internal/timer"
-	"idylicaro/go-chess/internal/timer/timertest"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/timer"
+	"github.com/idylicaro/go-chess/internal/timer/timertest"
 )
 
 func TestUndo(t *testing.T) {

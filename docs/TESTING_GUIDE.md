@@ -134,7 +134,7 @@ go run cmd/cli/*.go
 ```go
 package main
 
-import "idylicaro/go-chess/pkg/chess"
+import "github.com/idylicaro/go-chess/pkg/chess"
 
 func main() {
     // Initialize debug

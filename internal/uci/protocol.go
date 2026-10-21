@@ -2,7 +2,7 @@ package uci
 
 import (
 	"fmt"
-	"idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/common"
 )
 
 type Move struct {

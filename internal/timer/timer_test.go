@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/internal/timer"
-	"idylicaro/go-chess/internal/timer/timertest"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/timer"
+	"github.com/idylicaro/go-chess/internal/timer/timertest"
 )
 
 func newTestTimer(initial, increment time.Duration) (*timer.GameTimer, *timertest.FakeClock) {

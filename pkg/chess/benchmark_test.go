@@ -1,9 +1,9 @@
 package chess
 
 import (
-	"idylicaro/go-chess/internal/common"
-	"idylicaro/go-chess/internal/timer"
-	"idylicaro/go-chess/internal/uci"
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/timer"
+	"github.com/idylicaro/go-chess/internal/uci"
 	"testing"
 	"time"
 )
@@ -20,7 +20,7 @@ func BenchmarkMoveGeneration(b *testing.B) {
 
 	for _, moveStr := range moves {
 		move, _ := uci.ParseMove(moveStr)
-		game.Move(move)
+		_ = game.Move(move)
 	}
 
 	b.ResetTimer()
@@ -30,7 +30,7 @@ func BenchmarkMoveGeneration(b *testing.B) {
 			for y := 0; y < 8; y++ {
 				piece, _ := game.board.GetPiece(x, y)
 				if piece != nil && piece.GetColor() == game.currentTurn {
-					game.getLegalMovesForPiece(x, y)
+					_, _ = game.getLegalMovesForPiece(x, y)
 				}
 			}
 		}
@@ -50,7 +50,7 @@ func BenchmarkGameStateUpdate(b *testing.B) {
 
 	for _, moveStr := range moves {
 		move, _ := uci.ParseMove(moveStr)
-		game.Move(move)
+		_ = game.Move(move)
 	}
 
 	b.ResetTimer()
@@ -93,21 +93,21 @@ func BenchmarkTimerOperations(b *testing.B) {
 	}
 
 	game := NewTimedGame(timeConfig, timer.SystemClock{})
-	game.StartTimer()
+	_ = game.StartTimer()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Simulate timer operations that happen during a move
-		game.GetRemainingTime(common.White)
-		game.GetRemainingTime(common.Black)
+		_, _ = game.GetRemainingTime(common.White)
+		_, _ = game.GetRemainingTime(common.Black)
 
 		// Simulate move
 		move, _ := uci.ParseMove("e2e4")
-		game.Move(move)
+		_ = game.Move(move)
 
 		// Reset game for next iteration
 		game = NewTimedGame(timeConfig, timer.SystemClock{})
-		game.StartTimer()
+		_ = game.StartTimer()
 	}
 }
 
@@ -123,7 +123,7 @@ func BenchmarkBoardCopy(b *testing.B) {
 
 	for _, moveStr := range moves {
 		move, _ := uci.ParseMove(moveStr)
-		game.Move(move)
+		_ = game.Move(move)
 	}
 
 	b.ResetTimer()
@@ -144,13 +144,13 @@ func BenchmarkLegalMoveValidation(b *testing.B) {
 
 	for _, moveStr := range moves {
 		move, _ := uci.ParseMove(moveStr)
-		game.Move(move)
+		_ = game.Move(move)
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Test a move that requires extensive validation
-		game.getLegalMovesForPiece(4, 7) // King position
+		_, _ = game.getLegalMovesForPiece(4, 7) // King position
 	}
 }
 
@@ -168,11 +168,11 @@ func BenchmarkEnPassantValidation(b *testing.B) {
 
 		for _, moveStr := range moves {
 			move, _ := uci.ParseMove(moveStr)
-			game.Move(move)
+			_ = game.Move(move)
 		}
 
 		// Test en passant validation
-		game.getLegalMovesForPiece(4, 3) // White pawn that can capture en passant
+		_, _ = game.getLegalMovesForPiece(4, 3) // White pawn that can capture en passant
 	}
 }
 
@@ -191,10 +191,10 @@ func BenchmarkCastlingValidation(b *testing.B) {
 
 		for _, moveStr := range moves {
 			move, _ := uci.ParseMove(moveStr)
-			game.Move(move)
+			_ = game.Move(move)
 		}
 
 		// Test castling validation
-		game.getLegalMovesForPiece(4, 7) // White king
+		_, _ = game.getLegalMovesForPiece(4, 7) // White king
 	}
 }

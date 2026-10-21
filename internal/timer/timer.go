@@ -1,7 +1,7 @@
 package timer
 
 import (
-	"idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/internal/common"
 	"sync"
 	"time"
 )

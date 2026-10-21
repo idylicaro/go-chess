@@ -3,7 +3,7 @@ package chess_test
 import (
 	"fmt"
 
-	"idylicaro/go-chess/pkg/chess"
+	"github.com/idylicaro/go-chess/pkg/chess"
 )
 
 // The public API can be driven using only the names exported by pkg/chess.
