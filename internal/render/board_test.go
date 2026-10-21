@@ -257,3 +257,22 @@ func TestNoMaterialLinesByDefault(t *testing.T) {
 		t.Errorf("with material enabled the board keeps a line above and below:\n%q", out)
 	}
 }
+
+func TestCursorBeatsOtherMarksButKeepsTheDot(t *testing.T) {
+	game := chess.NewGame()
+	e2, _ := ParseSquare("e2")
+	e3, _ := ParseSquare("e3")
+	opts := Options{Selected: &e2, Targets: Targets(game, e2), Cursor: &e3}
+	plain := Board(game.GetBoard(), opts)
+	if !strings.Contains(plain, "|*|") || !strings.Contains(plain, "{P}") {
+		t.Errorf("cursor on an empty target should show |*|, with the selection still marked:\n%s", plain)
+	}
+	opts.Cursor = &e2
+	if out := Board(game.GetBoard(), opts); !strings.Contains(out, "|P|") || strings.Contains(out, "{P}") {
+		t.Errorf("cursor on the selected piece wins:\n%s", out)
+	}
+	opts.Style = Style{Color: true}
+	if out := Board(game.GetBoard(), opts); !strings.Contains(out, "48;5;215") {
+		t.Errorf("cursor color missing:\n%q", out)
+	}
+}

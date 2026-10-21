@@ -19,6 +19,7 @@ type Options struct {
 	Check    *chess.Position  // king in check
 	Selected *chess.Position  // piece picked up
 	Targets  []chess.Position // where the selected piece can go
+	Cursor   *chess.Position  // square under the keyboard cursor
 
 	// Material shows who is ahead ("+3") on the side that is. Captured also
 	// shows the pieces each side has taken; it assumes the game started from
@@ -37,6 +38,7 @@ const (
 	lastLight, lastDark = 229, 185 // squares of the last move
 	checkSquare         = 160      // king in check
 	selectedSquare      = 117      // piece picked up
+	cursorSquare        = 215      // keyboard cursor
 	captureSquare       = 174      // piece the selected one can take
 	targetMarker        = 22       // dot on an empty square the selected piece can reach
 )
@@ -46,6 +48,7 @@ type mark int
 
 const (
 	plain mark = iota
+	cursor
 	lastMove
 	check
 	selected
@@ -80,7 +83,7 @@ func Board(b chess.IBoard, opts Options) string {
 			if opts.Flipped {
 				x = 7 - col
 			}
-			out.WriteString(square(b, x, y, opts.Style, opts.markAt(b, x, y)))
+			out.WriteString(square(b, x, y, opts.Style, opts.markAt(b, x, y), opts.isEmptyTarget(b, x, y)))
 		}
 		fmt.Fprintf(&out, " %d\n", 8-y)
 	}
@@ -123,11 +126,14 @@ func sideLine(text string) string {
 	return "  " + text + "\n"
 }
 
-// markAt decides which highlight a square gets; a king in check beats the
-// selection, which beats a target, which beats the last move.
+// markAt decides which highlight a square gets: the cursor beats a king in
+// check, which beats the selection, which beats a target, which beats the
+// last move.
 func (o Options) markAt(b chess.IBoard, x, y int) mark {
 	at := func(p *chess.Position) bool { return p != nil && p.X == x && p.Y == y }
 	switch {
+	case at(o.Cursor):
+		return cursor
 	case at(o.Check):
 		return check
 	case at(o.Selected):
@@ -147,21 +153,33 @@ func (o Options) markAt(b chess.IBoard, x, y int) mark {
 	return plain
 }
 
+// isEmptyTarget says whether the square is a destination of the selected
+// piece with nothing on it, which is drawn as a dot.
+func (o Options) isEmptyTarget(b chess.IBoard, x, y int) bool {
+	for _, t := range o.Targets {
+		if t.X == x && t.Y == y {
+			piece, err := b.GetPiece(x, y)
+			return err != nil || piece == nil
+		}
+	}
+	return false
+}
+
 // markers wrap the glyph on a square without color, where the background
 // cannot carry the highlight.
 var markers = map[mark][2]string{
-	lastMove: {"[", "]"}, check: {"<", ">"}, selected: {"{", "}"}, capture: {"(", ")"},
+	cursor: {"|", "|"}, lastMove: {"[", "]"}, check: {"<", ">"}, selected: {"{", "}"}, capture: {"(", ")"},
 }
 
 // square draws one 3-column square.
-func square(b chess.IBoard, x, y int, style Style, m mark) string {
+func square(b chess.IBoard, x, y int, style Style, m mark, dot bool) string {
 	glyph := " "
 	var white bool
 	piece, err := b.GetPiece(x, y)
 	if err == nil && piece != nil {
 		white = piece.GetColor() == chess.White
 		glyph = pieceGlyph(piece.GetType(), white, style)
-	} else if m == target {
+	} else if dot {
 		glyph = "*"
 		if style.Unicode {
 			glyph = "•"
@@ -187,6 +205,8 @@ func square(b chess.IBoard, x, y int, style Style, m mark) string {
 		if light {
 			background = lastLight
 		}
+	case cursor:
+		background = cursorSquare
 	case check:
 		background = checkSquare
 	case selected:
@@ -198,7 +218,7 @@ func square(b chess.IBoard, x, y int, style Style, m mark) string {
 	switch {
 	case white || m == check:
 		foreground = whitePiece
-	case m == target:
+	case dot:
 		foreground = targetMarker
 	}
 	return fmt.Sprintf("\x1b[48;5;%d;38;5;%dm %s \x1b[0m", background, foreground, glyph)
