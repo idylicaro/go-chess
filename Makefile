@@ -6,7 +6,7 @@ PERFT_TEST  := go test -tags perft -run 'Perft' -v ./pkg/chess
 
 .DEFAULT_GOAL := help
 
-.PHONY: fuzz help build run test test-race test-short perft perft-nocache cover cover-html bench bench-report \
+.PHONY: ci fuzz help build run test test-race test-short perft perft-nocache cover cover-html bench bench-report \
         fmt fmt-check vet lint tidy check clean
 
 help: ## Lista os comandos disponíveis
@@ -80,3 +80,8 @@ clean: ## Remove binários, cobertura e relatórios
 fuzz: ## Roda cada alvo de fuzz por FUZZTIME (padrão 30s)
 	@for t in FuzzParseFEN FuzzSAN FuzzPGN; do \
 		go test ./pkg/chess -run '^$$' -fuzz "^$$t\$$" -fuzztime $(or $(FUZZTIME),30s) || exit 1; done
+	go test ./internal/pgnread -run '^$$' -fuzz '^FuzzParse$$' -fuzztime $(or $(FUZZTIME),30s)
+
+ci: fmt-check vet test-race lint ## Os jobs do CI, localmente: formatação, vet, race, lint, perft profundo e fuzz
+	$(PERFT_TEST) -count=1
+	$(MAKE) fuzz

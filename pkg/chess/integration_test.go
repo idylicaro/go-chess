@@ -260,3 +260,44 @@ func TestEnPassantIntegration(t *testing.T) {
 		t.Errorf("En passant should have captured the pawn on f5")
 	}
 }
+
+func TestCheckTimeout(t *testing.T) {
+	clock := timertest.NewFakeClock()
+	game := newStartedTimedGame(t, timer.TimeConfig{InitialTime: time.Second}, clock)
+
+	if game.CheckTimeout() || game.IsOver() {
+		t.Error("CheckTimeout ended a game with time left")
+	}
+	clock.Advance(1500 * time.Millisecond)
+	if !game.CheckTimeout() {
+		t.Fatal("CheckTimeout missed the flag")
+	}
+	if game.GetState() != TimeoutWhite || game.Result() != ResultBlackWins {
+		t.Errorf("state %v, result %v", game.GetState(), game.Result())
+	}
+	if game.CheckTimeout() {
+		t.Error("CheckTimeout must report the flag once, on the call that ends the game")
+	}
+	frozen, _ := game.GetRemainingTime(White)
+	clock.Advance(time.Hour)
+	if after, _ := game.GetRemainingTime(White); after != frozen {
+		t.Errorf("the clock keeps running after the game ended: %v then %v", frozen, after)
+	}
+}
+
+func TestCheckTimeoutIgnoresUntimedAndInsufficientMaterial(t *testing.T) {
+	if NewGame().CheckTimeout() {
+		t.Error("an untimed game cannot time out")
+	}
+	// White's flag falls, but Black has only a king: a draw, not a loss.
+	clock := timertest.NewFakeClock()
+	game, err := ParseFENTimed("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", timer.TimeConfig{InitialTime: time.Second}, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = game.StartTimer()
+	clock.Advance(2 * time.Second)
+	if !game.CheckTimeout() || game.Result() != ResultDraw || game.DrawReason() != DrawTimeoutVsInsufficientMaterial {
+		t.Errorf("result %v, reason %v", game.Result(), game.DrawReason())
+	}
+}

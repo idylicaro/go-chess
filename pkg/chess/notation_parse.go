@@ -58,7 +58,7 @@ func parseSANRequest(san string) (sanRequest, error) {
 	}
 	parts := sanPattern.FindStringSubmatch(clean)
 	if parts == nil {
-		return sanRequest{}, fmt.Errorf("invalid SAN %q: expected e.g. \"e4\", \"Nbd2\", \"exd5\", \"e8=Q\" or \"O-O\"", san)
+		return sanRequest{}, kindError{ErrInvalidNotation, fmt.Sprintf("invalid SAN %q: expected e.g. \"e4\", \"Nbd2\", \"exd5\", \"e8=Q\" or \"O-O\"", san)}
 	}
 	request := sanRequest{pieceType: sanPieceTypes[parts[1]], fromFile: parts[2], fromRank: parts[3], to: parts[5]}
 	if parts[6] != "" {
@@ -87,8 +87,18 @@ func pickSANMatch(san string, matches []uci.Move, fen string) (uci.Move, error) 
 	case 1:
 		return matches[0], nil
 	case 0:
-		return uci.Move{}, fmt.Errorf("SAN %q matches no legal move in position %q (a promotion needs its piece, e.g. \"e8=Q\")", san, fen)
+		return uci.Move{}, fmt.Errorf("%w: SAN %q matches no legal move in position %q (a promotion needs its piece, e.g. \"e8=Q\")", ErrIllegalMove, san, fen)
 	default:
-		return uci.Move{}, fmt.Errorf("SAN %q is ambiguous in position %q: matches %v, add the origin file or rank", san, fen, matches)
+		return uci.Move{}, fmt.Errorf("%w: SAN %q fits %v in position %q, add the origin file or rank", ErrAmbiguousMove, san, matches, fen)
 	}
 }
+
+// kindError is an error whose message stands alone but which still matches
+// one of the sentinel errors with errors.Is.
+type kindError struct {
+	kind error
+	msg  string
+}
+
+func (e kindError) Error() string { return e.msg }
+func (e kindError) Unwrap() error { return e.kind }

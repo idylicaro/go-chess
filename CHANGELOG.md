@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+CLI and TUI release (milestone v1.2). The library only gains a few additions.
+
+### Added
+
+- `chess` subcommands: `play`, `tui`, `analyze`, `perft`, `fen` and `pgn`, each with `--help`.
+- Moves in SAN or UCI with distinct errors for a malformed, illegal or ambiguous move.
+- `play` flags `--fen`, `--time 5+3`, `--engine`, `--level`, `--color`, `--no-color`, `--ascii` and `--pgn-out`, and the in-game commands `undo`, `resign`, `draw`, `accept`, `decline`, `fen`, `pgn`, `flip`, `moves [square]` and `help`.
+- A colored Unicode board with an ASCII fallback, highlights for the last move, check and legal destinations, captured pieces and material, and a side panel with the moves in SAN, the clocks and a status bar.
+- `chess tui`: bubbletea interface with keyboard and mouse moves, a promotion dialog, clocks, a UCI engine opponent that does not block the interface, and an analysis mode with an evaluation bar and the main line.
+- `chess pgn --replay`: step through a game with the arrow keys (lab 1.2-A, `docs/labs/1.2-A-pgn-replay.md`).
+- `pkg/chess`: `ErrInvalidNotation`, `ErrIllegalMove` and `ErrAmbiguousMove`, wrapped by `ParseMove`, `ParseSAN` and `Move`; `ParseFENTimed`; `Game.CheckTimeout`; `PGNHeaders.TimeControl`.
+- `make ci` runs the CI jobs locally.
+
+### Changed
+
+- A draw offer in the CLI is answered by the opponent of the side that made it; `accept` used to fail because it used the side to move.
+- The module now depends on bubbletea and lipgloss, for the client only. `pkg/chess` still imports nothing outside the standard library, and `go.mod` stays on Go 1.23.
+
 ## [1.1.0] - 2026-10-20
 
 Hardening release: no new rules, a smaller and documented public API.

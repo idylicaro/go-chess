@@ -1,0 +1,238 @@
+package render
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/idylicaro/go-chess/internal/common"
+	"github.com/idylicaro/go-chess/pkg/chess"
+)
+
+// Options say how to draw a board.
+type Options struct {
+	Style Style
+	// Flipped draws the board from Black's side.
+	Flipped bool
+
+	// Highlights, all optional.
+	LastMove *chess.Move      // origin and destination of the last move played
+	Check    *chess.Position  // king in check
+	Selected *chess.Position  // piece picked up
+	Targets  []chess.Position // where the selected piece can go
+	Cursor   *chess.Position  // square under the keyboard cursor
+
+	// Material shows who is ahead ("+3") on the side that is. Captured also
+	// shows the pieces each side has taken; it assumes the game started from
+	// the standard position.
+	Material bool
+	Captured bool
+}
+
+// 256-color palette: board squares, piece colors and highlights.
+const (
+	lightSquare = 187
+	darkSquare  = 107
+	whitePiece  = 231
+	blackPiece  = 16
+
+	lastLight, lastDark = 229, 185 // squares of the last move
+	checkSquare         = 160      // king in check
+	selectedSquare      = 117      // piece picked up
+	cursorSquare        = 215      // keyboard cursor
+	captureSquare       = 174      // piece the selected one can take
+	targetMarker        = 22       // dot on an empty square the selected piece can reach
+)
+
+// mark is what is drawn on a square besides its piece.
+type mark int
+
+const (
+	plain mark = iota
+	cursor
+	lastMove
+	check
+	selected
+	target // empty square the selected piece can reach
+	capture
+)
+
+// Glyphs by piece type, indexed White, Black. With color both sides use the
+// solid symbols and differ by color; without it White gets the outlines.
+var (
+	outlineGlyphs = map[common.PieceType]string{common.Pawn: "♙", common.Knight: "♘", common.Bishop: "♗", common.Rook: "♖", common.Queen: "♕", common.King: "♔"}
+	solidGlyphs   = map[common.PieceType]string{common.Pawn: "♟", common.Knight: "♞", common.Bishop: "♝", common.Rook: "♜", common.Queen: "♛", common.King: "♚"}
+	letters       = map[common.PieceType]string{common.Pawn: "p", common.Knight: "n", common.Bishop: "b", common.Rook: "r", common.Queen: "q", common.King: "k"}
+)
+
+// Board draws the board with rank and file labels. White is at the bottom
+// unless Options.Flipped.
+//
+//	fmt.Print(render.Board(game.GetBoard(), render.Options{Style: style}))
+func Board(b chess.IBoard, opts Options) string {
+	var out strings.Builder
+	top, bottom := opts.sideLines(b)
+	out.WriteString(top)
+	for row := 0; row < 8; row++ {
+		y := row
+		if opts.Flipped {
+			y = 7 - row
+		}
+		fmt.Fprintf(&out, "%d ", 8-y)
+		for col := 0; col < 8; col++ {
+			x := col
+			if opts.Flipped {
+				x = 7 - col
+			}
+			out.WriteString(square(b, x, y, opts.Style, opts.markAt(b, x, y), opts.isEmptyTarget(b, x, y)))
+		}
+		fmt.Fprintf(&out, " %d\n", 8-y)
+	}
+	out.WriteString("  ")
+	for col := 0; col < 8; col++ {
+		x := col
+		if opts.Flipped {
+			x = 7 - col
+		}
+		fmt.Fprintf(&out, " %c ", 'a'+x)
+	}
+	return strings.TrimRight(out.String(), " ") + "\n" + bottom
+}
+
+// sideLines are the lines above and below the board with what the side
+// shown at the top and at the bottom has captured; each is empty, or ends in
+// a newline.
+func (o Options) sideLines(b chess.IBoard) (top, bottom string) {
+	if !o.Material && !o.Captured {
+		return "", ""
+	}
+	byWhite, byBlack := Captured(b)
+	if !o.Captured {
+		byWhite, byBlack = nil, nil
+	}
+	balance := Balance(b)
+	// What White took is black pieces, and the other way around.
+	whiteLine := materialLine(byWhite, false, max(balance, 0), o.Style)
+	blackLine := materialLine(byBlack, true, max(-balance, 0), o.Style)
+	if o.Flipped {
+		return sideLine(whiteLine), sideLine(blackLine)
+	}
+	return sideLine(blackLine), sideLine(whiteLine)
+}
+
+func sideLine(text string) string {
+	if text == "" {
+		return "\n"
+	}
+	return "  " + text + "\n"
+}
+
+// markAt decides which highlight a square gets: the cursor beats a king in
+// check, which beats the selection, which beats a target, which beats the
+// last move.
+func (o Options) markAt(b chess.IBoard, x, y int) mark {
+	at := func(p *chess.Position) bool { return p != nil && p.X == x && p.Y == y }
+	switch {
+	case at(o.Cursor):
+		return cursor
+	case at(o.Check):
+		return check
+	case at(o.Selected):
+		return selected
+	}
+	for _, t := range o.Targets {
+		if t.X == x && t.Y == y {
+			if piece, err := b.GetPiece(x, y); err == nil && piece != nil {
+				return capture
+			}
+			return target
+		}
+	}
+	if m := o.LastMove; m != nil && (m.FromX == x && m.FromY == y || m.ToX == x && m.ToY == y) {
+		return lastMove
+	}
+	return plain
+}
+
+// isEmptyTarget says whether the square is a destination of the selected
+// piece with nothing on it, which is drawn as a dot.
+func (o Options) isEmptyTarget(b chess.IBoard, x, y int) bool {
+	for _, t := range o.Targets {
+		if t.X == x && t.Y == y {
+			piece, err := b.GetPiece(x, y)
+			return err != nil || piece == nil
+		}
+	}
+	return false
+}
+
+// markers wrap the glyph on a square without color, where the background
+// cannot carry the highlight.
+var markers = map[mark][2]string{
+	cursor: {"|", "|"}, lastMove: {"[", "]"}, check: {"<", ">"}, selected: {"{", "}"}, capture: {"(", ")"},
+}
+
+// square draws one 3-column square.
+func square(b chess.IBoard, x, y int, style Style, m mark, dot bool) string {
+	glyph := " "
+	var white bool
+	piece, err := b.GetPiece(x, y)
+	if err == nil && piece != nil {
+		white = piece.GetColor() == chess.White
+		glyph = pieceGlyph(piece.GetType(), white, style)
+	} else if dot {
+		glyph = "*"
+		if style.Unicode {
+			glyph = "•"
+		}
+	} else if !style.Color {
+		glyph = "."
+	}
+	if !style.Color {
+		left, right := " ", " "
+		if pair, ok := markers[m]; ok {
+			left, right = pair[0], pair[1]
+		}
+		return left + glyph + right
+	}
+	light := (x+y)%2 == 0
+	background := darkSquare
+	if light {
+		background = lightSquare
+	}
+	switch m {
+	case lastMove:
+		background = lastDark
+		if light {
+			background = lastLight
+		}
+	case cursor:
+		background = cursorSquare
+	case check:
+		background = checkSquare
+	case selected:
+		background = selectedSquare
+	case capture:
+		background = captureSquare
+	}
+	foreground := blackPiece
+	switch {
+	case white || m == check:
+		foreground = whitePiece
+	case dot:
+		foreground = targetMarker
+	}
+	return fmt.Sprintf("\x1b[48;5;%d;38;5;%dm %s \x1b[0m", background, foreground, glyph)
+}
+
+func pieceGlyph(t common.PieceType, white bool, style Style) string {
+	switch {
+	case !style.Unicode && white:
+		return strings.ToUpper(letters[t])
+	case !style.Unicode:
+		return letters[t]
+	case white && !style.Color:
+		return outlineGlyphs[t]
+	default:
+		return solidGlyphs[t]
+	}
+}

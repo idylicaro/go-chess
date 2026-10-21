@@ -173,10 +173,10 @@ func (g *Game) play(move uci.Move) error {
 	}
 
 	if pieceToMove == nil {
-		return fmt.Errorf("move %s: there is no piece on %s", move, squareName(move.FromX, move.FromY))
+		return fmt.Errorf("%w: move %s: there is no piece on %s", ErrIllegalMove, move, squareName(move.FromX, move.FromY))
 	}
 	if pieceToMove.GetColor() != g.currentTurn {
-		return fmt.Errorf("move %s: the piece on %s is %v's but it is %v's turn", move, squareName(move.FromX, move.FromY), pieceToMove.GetColor(), g.currentTurn)
+		return fmt.Errorf("%w: move %s: the piece on %s is %v's but it is %v's turn", ErrIllegalMove, move, squareName(move.FromX, move.FromY), pieceToMove.GetColor(), g.currentTurn)
 	}
 
 	legalMoves, err := g.getLegalMovesForPiece(move.FromX, move.FromY)
@@ -192,7 +192,7 @@ func (g *Game) play(move uci.Move) error {
 		}
 	}
 	if !isLegal {
-		return fmt.Errorf("illegal move %s for %v in position %q: the piece cannot go there or it would leave the king in check (see LegalMoves)", move, g.currentTurn, g.FEN())
+		return fmt.Errorf("%w: %s for %v in position %q: the piece cannot go there or it would leave the king in check (see LegalMoves)", ErrIllegalMove, move, g.currentTurn, g.FEN())
 	}
 
 	targetPiece, _ := g.board.GetPiece(move.ToX, move.ToY)
