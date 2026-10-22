@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-CLI and TUI (milestone v1.2), a much faster move generator (milestone v2 Performance) and the project's own engine (milestone v3). The public API only gains additions.
+CLI and TUI (milestone v1.2), a much faster move generator (milestone v2 Performance) and the project's own engine (milestone v3). The public API only gains additions. Lab #47 (Syzygy tablebases) is not included: its Fathom binding is on the `lab/47-syzygy` branch, untested.
 
 ### Added
 

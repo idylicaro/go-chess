@@ -88,6 +88,7 @@ bin/chess help                              # every command; `chess <command> --
 | `perft` | Counts the nodes of the legal-move tree. |
 | `fen` | Validates a FEN and shows the position. |
 | `pgn` | Reads a PGN and shows the game; `--replay` steps through it with ←/→. |
+| `match` | Plays two UCI engines against each other in game pairs, with Elo error bars and an optional SPRT (`--sprt 0,10`); `--pgn` saves the games. |
 
 The board uses colors and Unicode pieces when the terminal supports them. `--no-color` and `--ascii` (or `NO_COLOR`) turn them off, and without a UTF-8 locale or a terminal it falls back to ASCII. Engines are any UCI engine; `--level` sets Stockfish's `Skill Level`.
 
@@ -125,7 +126,7 @@ pkg/chess/      public API: board, pieces, game, FEN, SAN, PGN, perft, SearchBoa
 internal/       cli, tui, render (board, panel), engine (UCI client), pgnread,
                 moveinput, plus common types, clock, UCI move parsing, debug logging;
                 for the engine: eval, search, uciserver, book (Polyglot), match (SPRT)
-docs/           API surface, roadmap, testing guide
+docs/           API surface, testing guide, labs (one report per experiment)
 scripts/        benchmark script
 ```
 
