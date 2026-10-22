@@ -122,6 +122,25 @@ Target performance:
 - Game State Update: under 100μs
 - Board Copy: under 50μs
 
+## Engine strength (SPRT)
+
+Unit tests show that the engine's search is correct; only games show whether a change makes it stronger. Every search change is measured against the version before it:
+
+```bash
+make build
+scripts/sprt.sh HEAD                       # working tree vs the last commit, SPRT [0, 10]
+scripts/sprt.sh main -- --tc 5+0.05 --sprt 0,5
+```
+
+The script builds both engines and runs `chess match` with them: game pairs from the built-in openings, each played with both colors, results counted per pair (the pentanomial model) and an SPRT that stops once it accepts H0 ("no gain of elo1") or H1 ("a gain over elo0"). It never decides before 10 pairs. A switch that is a UCI option can also be measured with a single binary:
+
+```bash
+bin/chess match --engine1 bin/chess-engine --engine2 bin/chess-engine \
+  --option2 LMR=false --name1 lmr --name2 no-lmr --tc 3+0.03 --sprt 0,10 --concurrency 8
+```
+
+Keep `--concurrency` at or below the number of physical cores, or the engines lose on time for reasons that are not theirs.
+
 ## Debugging
 
 ### Environment Variables
