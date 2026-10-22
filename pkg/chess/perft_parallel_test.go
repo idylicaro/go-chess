@@ -35,7 +35,7 @@ func TestPerftParallel_LeavesTheGameUntouched(t *testing.T) {
 }
 
 func TestRootMoveQueue_HandsOutEachMoveOnce(t *testing.T) {
-	queue := &rootMoveQueue{moves: []genMove{{from: 1}, {from: 2}}}
+	queue := &rootMoveQueue{moves: []SearchMove{{from: 1}, {from: 2}}}
 	first, okFirst := queue.take()
 	second, okSecond := queue.take()
 	_, okThird := queue.take()

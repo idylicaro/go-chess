@@ -13,6 +13,15 @@ Registro das decisões da revisão feita na v1.1 (#15). A API pública é o que 
 | Relógio | `StartTimer`, `CheckTimeout`, `PauseTimer`, `ResumeTimer`, `HasTimer`, `GetRemainingTime`, `TimeConfig`, `Clock`, `SystemClock`, `Blitz3Plus2`, `Rapid10Plus0`, `Classical90Plus30` | Partidas com tempo e relógio injetável. |
 | Tipos | `Color`, `White`, `Black`, `PieceType`, `PromoteTo*`, `Result*`, `GameState`, `CastlingRights`, `ErrGameOver`, `ErrNoMoveToUndo`, `ErrInvalidNotation`, `ErrIllegalMove`, `ErrAmbiguousMove` | Tipos que aparecem nas assinaturas acima. |
 
+## Experimental: engines (v3)
+
+| Grupo | Símbolos | Por quê |
+|---|---|---|
+| Busca | `SearchBoard`, `NewSearchBoard`, `SearchUndo`, `SearchMove`, `NullSearchMove`, `UnpackSearchMove`, `MaxSearchMoves` | O make/unmake sem alocação que o perft usa, para a engine (`internal/search`) e para quem escrever outra. |
+| Tipos de peça | `Pawn`, `Knight`, `Bishop`, `Rook`, `Queen`, `King` | Retornados por `SearchBoard.PieceOn`. |
+
+Esta parte pode mudar numa versão menor enquanto a engine evolui: ela segue a representação interna (casas de 0 a 63 a partir de a8, lances pseudo-legais). O que está em "Estável" não muda por causa dela.
+
 ## Removido do export na v1.1
 
 | Símbolo | Decisão | Motivo |

@@ -6,7 +6,7 @@ import (
 )
 
 func TestGenMove_ToUCI(t *testing.T) {
-	move := genMove{from: int8(squareIndex(4, 1)), to: int8(squareIndex(4, 0)), promotion: PromoteToRook}
+	move := SearchMove{from: int8(squareIndex(4, 1)), to: int8(squareIndex(4, 0)), promotion: PromoteToRook}
 	if got := move.toUCI(); got != (uci.Move{FromX: 4, FromY: 1, ToX: 4, ToY: 0, Promotion: PromoteToRook}) || got.String() != "e7e8r" {
 		t.Errorf("toUCI() = %v (%s), want e7e8r", got, got)
 	}
@@ -29,8 +29,8 @@ func TestHasLegalMove(t *testing.T) {
 // TestAppendLegalMoves_KeepsPrefix checks the in-place filter leaves moves
 // already in the slice alone.
 func TestAppendLegalMoves_KeepsPrefix(t *testing.T) {
-	sentinel := genMove{from: 1, to: 2}
-	moves := NewGame().appendLegalMoves([]genMove{sentinel})
+	sentinel := SearchMove{from: 1, to: 2}
+	moves := NewGame().appendLegalMoves([]SearchMove{sentinel})
 	if len(moves) != 21 || moves[0] != sentinel {
 		t.Errorf("appendLegalMoves kept %d moves starting with %v, want 21 starting with %v", len(moves), moves[0], sentinel)
 	}

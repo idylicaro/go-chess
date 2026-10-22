@@ -46,7 +46,7 @@ func fakeEngine() {
 			fmt.Println("info depth 2 score cp 40 pv e2e4 e7e5 g1f3")
 			fmt.Println("bestmove e2e4")
 		case strings.HasPrefix(command, "go"):
-			game, err := chess.ParseFEN(fen)
+			game, err := fakeEnginePosition(fen)
 			if err != nil || len(game.LegalMoves()) == 0 {
 				fmt.Println("bestmove (none)")
 				continue
@@ -58,6 +58,22 @@ func fakeEngine() {
 			return
 		}
 	}
+}
+
+// fakeEnginePosition reads "<fen> [moves m1 m2 ...]", as match sends it.
+func fakeEnginePosition(position string) (*chess.Game, error) {
+	fen, moves, _ := strings.Cut(position, " moves ")
+	game, err := chess.ParseFEN(fen)
+	for _, notation := range strings.Fields(moves) {
+		if err != nil {
+			return nil, err
+		}
+		var move chess.Move
+		if move, err = chess.ParseMove(notation); err == nil {
+			err = game.Move(move)
+		}
+	}
+	return game, err
 }
 
 // run executes the command line and returns the exit status and both outputs.

@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-CLI and TUI (milestone v1.2) and a much faster move generator (milestone v2 Performance). The public API only gains additions.
+CLI and TUI (milestone v1.2), a much faster move generator (milestone v2 Performance) and the project's own engine (milestone v3). The public API only gains additions. Lab #47 (Syzygy tablebases) is not included: its Fathom binding is on the `lab/47-syzygy` branch, untested.
 
 ### Added
 
@@ -20,6 +20,13 @@ CLI and TUI (milestone v1.2) and a much faster move generator (milestone v2 Perf
 - `make ci` runs the CI jobs locally.
 - `Game.PerftParallel(depth, workers)`: perft with the root moves shared among goroutines, and `chess perft --workers N` (default: every CPU). About 6.5x faster on 8 cores (lab 2.0-A, `docs/labs/2.0-A-parallel-perft.md`).
 - `BenchmarkPerft` and `BenchmarkPerftParallel`, the reference nodes/s measures.
+- `bin/chess-engine` (`cmd/engine`), a UCI engine: PeSTO evaluation with game phase (#36), negamax with alpha-beta and iterative deepening (#37), MVV-LVA, killer and history move ordering (#38), quiescence search (#39), a lockless transposition table (#40), time management for `movetime`, clocks and `stop` (#41) and a UCI server (#42).
+- Null-move pruning (+86 Elo), late-move reductions (+100) and futility pruning (+35), each switchable as a UCI option and accepted by SPRT against the version before it (lab #44, `docs/labs/3.0-A-pruning.md`).
+- `Threads`: Lazy SMP with a shared transposition table, +60 Elo for 2 threads and +119 for 4 (lab #45, `docs/labs/3.0-B-lazy-smp.md`).
+- `OwnBook` and `BookFile`: Polyglot opening books, off by default; the gm2001 book measured no gain (lab #46, `docs/labs/3.0-C-polyglot-book.md`).
+- `chess match`: engine-versus-engine matches in game pairs with Elo error bars and an SPRT, and `scripts/sprt.sh` to test the working tree against an earlier commit (#43).
+- `pkg/chess`: `SearchBoard`, `SearchMove` and the piece-type constants, an experimental make/unmake API for engines (see `docs/API.md`).
+- The UCI client gains `SearchGame`, a search after a list of moves, so an engine sees the game's repetitions.
 
 ### Changed
 
